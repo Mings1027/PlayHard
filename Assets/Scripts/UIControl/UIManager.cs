@@ -25,14 +25,13 @@ namespace UIControl
 
         private void OnEnable()
         {
-            UIEventManager.AddEvent(UIEvent.PlayGame, PlayGame);
+            EventManager.AddEvent(ActionEvent.PlayGame, PlayGame);
         }
 
         private void OnDisable()
         {
-            UIEventManager.RemoveEvent(UIEvent.PlayGame, PlayGame);
+            EventManager.RemoveEvent(ActionEvent.PlayGame, PlayGame);
         }
-
 
         private void InitUI()
         {
@@ -55,8 +54,8 @@ namespace UIControl
         {
             playButton.onClick.AddListener(() =>
             {
-                UIEventManager.TriggerEvent(UIEvent.PlayGame);
-                UIEventManager.TriggerEvent(UIEvent.StartStage);
+                EventManager.TriggerEvent(ActionEvent.PlayGame);
+                EventManager.TriggerEvent(ActionEvent.CreateStage);
             });
         }
 
@@ -64,7 +63,6 @@ namespace UIControl
         {
             titleUIPanel.SetActive(false);
             gamePlayPanel.SetActive(true);
-            
         }
 
         private void GoHome()
