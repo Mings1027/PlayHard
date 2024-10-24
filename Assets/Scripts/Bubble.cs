@@ -1,53 +1,50 @@
 using System;
 using UnityEngine;
-using UnityEngine.UI;
 
+[RequireComponent(typeof(SpriteRenderer))]
 public class Bubble : MonoBehaviour
 {
-    private SpriteRenderer bubbleSprite;
-    public BubbleType Type { get; private set; }
-    public int PathIndex { get; private set; }
+    private SpriteRenderer _bubbleSprite;
+    private BubbleType _type;
 
     private void Awake()
     {
-        bubbleSprite = GetComponent<SpriteRenderer>();
+        _bubbleSprite = GetComponent<SpriteRenderer>();
         RandomizeType();
-        name = $"Bubble_{Type}";
-    }
+        UpdateVisual();
 
-    public void SetPathIndex(int index)
-    {
-        PathIndex = index;
+#if UNITY_EDITOR
+        name = $"Bubble_{_type}";
+#endif
     }
 
     private void RandomizeType()
     {
         // BubbleType enum의 모든 값들을 배열로 가져옴
-        Array values = Enum.GetValues(typeof(BubbleType));
+        var values = Enum.GetValues(typeof(BubbleType));
         // 랜덤한 인덱스 선택
-        int randomIndex = UnityEngine.Random.Range(0, values.Length);
+        var randomIndex = UnityEngine.Random.Range(0, values.Length);
         // 선택된 타입 설정
-        Type = (BubbleType)values.GetValue(randomIndex);
-        UpdateVisual();
+        _type = (BubbleType)values.GetValue(randomIndex);
     }
 
     private void UpdateVisual()
     {
-        Color bubbleColor = GetColorForType(Type);
-        if (bubbleSprite != null)
+        var bubbleColor = GetColorForType();
+        if (_bubbleSprite != null)
         {
-            bubbleSprite.color = bubbleColor;
+            _bubbleSprite.color = bubbleColor;
         }
     }
 
-    private Color GetColorForType(BubbleType type)
+    public Color GetColorForType()
     {
-        switch (type)
+        return _type switch
         {
-            case BubbleType.Red: return Color.red;
-            case BubbleType.Blue: return Color.blue;
-            case BubbleType.Yellow: return Color.yellow;
-            default: return Color.white;
-        }
+            BubbleType.Red => Color.red,
+            BubbleType.Blue => Color.blue,
+            BubbleType.Yellow => Color.yellow,
+            _ => Color.white
+        };
     }
 }

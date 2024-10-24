@@ -3,136 +3,143 @@ using UnityEngine;
 using System.Collections.Generic;
 using DataControl;
 using Cysharp.Threading.Tasks;
-using System.Threading;
 
 public class StageController : MonoBehaviour
 {
     [SerializeField] private GameObject bubblePrefab;
-    [SerializeField] private StageData currentStage;
     [SerializeField] private BoxCollider2D bubbleContainer;
+    [SerializeField] private GameObject bubbleShooter;
     [SerializeField] private float bubbleMoveSpeed = 5f;
     [SerializeField] private float spawnInterval = 0.5f;
 
-    private Camera mainCamera;
-    private Dictionary<BubblePath, List<GameObject>> pathBubbles = new();
-    private CancellationTokenSource cts;
+    private Camera _mainCamera;
+    private StageData _currentStage;
+    private readonly Dictionary<BubblePath, List<GameObject>> _pathBubbles = new();
 
     private void Awake()
     {
-        mainCamera = Camera.main;
-        cts = new CancellationTokenSource();
+        _mainCamera = Camera.main;
+        bubbleShooter.SetActive(false);
     }
 
-    private void Start()
+    private void OnEnable()
     {
-        SetStageData(currentStage);
+        EventManager.AddEvent<StageData>(ActionEvent.CreateStage, CreateStage);
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
-        cts?.Cancel();
-        cts?.Dispose();
+        EventManager.RemoveEvent<StageData>(ActionEvent.CreateStage, CreateStage);
+    }
+
+    private async void CreateStage(StageData stageData)
+    {
+        _currentStage = stageData;
+        SetupLayoutCollider();
+        await CreateBubblesForAllPaths();
+        bubbleShooter.SetActive(true);
     }
 
     private void SetupLayoutCollider()
     {
-        float screenHeight = 2f * mainCamera.orthographicSize;
-        float screenWidth = screenHeight * mainCamera.aspect;
+        var screenHeight = 2f * _mainCamera.orthographicSize;
+        var screenWidth = screenHeight * _mainCamera.aspect;
 
-        Vector2 containerSize = bubbleContainer.size;
+        var safeArea = Screen.safeArea;
+        var topSafeAreaWorld = _mainCamera.ScreenToWorldPoint(new Vector3(0, safeArea.yMax, 0)).y;
+        
+        var containerSize = bubbleContainer.size;
         containerSize.x = screenWidth;
-        containerSize.y = currentStage.height;
+        containerSize.y = _currentStage.height;
         bubbleContainer.size = containerSize;
 
-        Vector3 containerPosition = bubbleContainer.transform.position;
+        var containerPosition = bubbleContainer.transform.position;
         containerPosition.x = 0;
-        containerPosition.y = screenHeight / 2f - containerSize.y / 2f;
+        containerPosition.y = topSafeAreaWorld - containerSize.y / 2f;
         bubbleContainer.transform.position = containerPosition;
+    }
+
+    private async UniTask CreateBubblesForAllPaths()
+    {
+        var bubbleSize = bubbleContainer.size.x / _currentStage.Width;
+
+        var taskCount = _currentStage.bubblePaths.Count;
+        var tasks = new UniTask[taskCount];
+
+        for (var i = 0; i < taskCount; i++)
+        {
+            var path = _currentStage.bubblePaths[i];
+            tasks[i] = CreateBubblesForPath(path, bubbleSize);
+        }
+
+        await UniTask.WhenAll(tasks);
+    }
+
+    private async UniTask CreateBubblesForPath(BubblePath path, float bubbleSize)
+    {
+        _pathBubbles[path] = new List<GameObject>();
+
+        for (var i = 0; i < path.points.Count; i++)
+        {
+            var bubbles = _pathBubbles[path];
+            var bubbleCount = bubbles.Count;
+
+            if (bubbleCount > 0)
+            {
+                // 기존 버블들 동시에 이동
+                var moveTasks = new UniTask[bubbleCount];
+
+                for (var j = bubbleCount - 1; j >= 0; j--)
+                {
+                    var targetPosition = CalculateBubblePosition(path.points[j + 1]);
+                    moveTasks[j] = MoveBubble(bubbles[j], targetPosition);
+                }
+
+                await UniTask.WhenAll(moveTasks);
+            }
+
+            // 새 버블 생성 (첫 번째 위치에)
+            var spawnPosition = CalculateBubblePosition(path.points[0]);
+            var bubble = Instantiate(bubblePrefab, spawnPosition, Quaternion.identity);
+            bubble.transform.localScale = Vector3.one * bubbleSize;
+            bubble.transform.SetParent(bubbleContainer.transform);
+            bubbles.Insert(0, bubble);
+
+            await UniTask.Delay(TimeSpan.FromSeconds(spawnInterval), cancellationToken: destroyCancellationToken);
+        }
     }
 
     private Vector3 CalculateBubblePosition(Vector2Int point)
     {
-        Vector3 containerTopPosition = bubbleContainer.transform.position + 
-                                     Vector3.up * (bubbleContainer.size.y / 2f);
+        var containerTopPosition = bubbleContainer.transform.position +
+                                   Vector3.up * (bubbleContainer.size.y / 2f);
 
-        float bubbleSize = bubbleContainer.size.x / currentStage.Width;
-        float bubbleRadius = bubbleSize / 2f;
-        float horizontalSpacing = bubbleSize;
-        float verticalSpacing = bubbleSize * 0.866f;
+        var bubbleSize = bubbleContainer.size.x / _currentStage.Width;
+        var bubbleRadius = bubbleSize / 2f;
+        var verticalSpacing = bubbleSize * 0.866f;
 
         containerTopPosition.y -= bubbleRadius;
 
-        Vector3 bubblePosition = containerTopPosition;
-        float xOffset = point.y % 2 == 1 ? horizontalSpacing * 0.5f : 0f;
-        bubblePosition.x += (point.x - (currentStage.Width - 1) / 2f) * horizontalSpacing + xOffset;
+        var bubblePosition = containerTopPosition;
+        var xOffset = point.y % 2 == 1 ? bubbleSize * 0.5f : 0f;
+        bubblePosition.x += (point.x - (_currentStage.Width - 1) / 2f) * bubbleSize + xOffset;
         bubblePosition.y -= point.y * verticalSpacing;
 
         return bubblePosition;
     }
 
-    private async UniTask CreateBubblesForPath(BubblePath path, float bubbleSize)
-    {
-        pathBubbles[path] = new List<GameObject>();
-
-        for (int i = 0; i < path.points.Count; i++)
-        {
-            // 기존 버블들 동시에 이동
-            var moveTasks = new List<UniTask>();
-            List<GameObject> bubbles = pathBubbles[path];
-            
-            for (int j = bubbles.Count - 1; j >= 0; j--)
-            {
-                Vector3 targetPosition = CalculateBubblePosition(path.points[j + 1]);
-                moveTasks.Add(MoveBubble(bubbles[j], targetPosition));
-            }
-
-            // 새 버블 생성 (첫 번째 위치에)
-            Vector3 spawnPosition = CalculateBubblePosition(path.points[0]);
-            GameObject bubble = Instantiate(bubblePrefab, spawnPosition, Quaternion.identity);
-            bubble.transform.localScale = Vector3.one * bubbleSize;
-            bubble.transform.SetParent(bubbleContainer.transform);
-            bubbles.Insert(0, bubble);
-
-            // 모든 이동이 완료될 때까지 대기
-            if (moveTasks.Count > 0)
-            {
-                await UniTask.WhenAll(moveTasks);
-            }
-
-            await UniTask.Delay(TimeSpan.FromSeconds(spawnInterval), cancellationToken: cts.Token);
-        }
-    }
-
     private async UniTask MoveBubble(GameObject bubble, Vector3 targetPosition)
     {
-        float elapsedTime = 0f;
-        Vector3 startPosition = bubble.transform.position;
+        var elapsedTime = 0f;
+        var startPosition = bubble.transform.position;
 
         while (elapsedTime < 1f)
         {
             elapsedTime += Time.deltaTime * bubbleMoveSpeed;
             bubble.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime);
-            await UniTask.Yield(cts.Token);
+            await UniTask.Yield(destroyCancellationToken);
         }
 
         bubble.transform.position = targetPosition;
-    }
-
-    private async void SetStageData(StageData stageData)
-    {
-        currentStage = stageData;
-        SetupLayoutCollider();
-
-        float bubbleSize = bubbleContainer.size.x / currentStage.Width;
-        
-        // 모든 경로에 대해 동시에 버블 생성 시작
-        var tasks = new List<UniTask>();
-        foreach (var path in currentStage.bubblePaths)
-        {
-            tasks.Add(CreateBubblesForPath(path, bubbleSize));
-        }
-
-        // 모든 경로의 버블 생성이 완료될 때까지 대기
-        await UniTask.WhenAll(tasks);
     }
 }
