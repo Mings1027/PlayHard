@@ -4,14 +4,15 @@ using UnityEngine.UI;
 
 public class Bubble : MonoBehaviour
 {
-    private Image image;
+    private SpriteRenderer bubbleSprite;
     public BubbleType Type { get; private set; }
     public int PathIndex { get; private set; }
 
     private void Awake()
     {
-        image = GetComponent<Image>();
+        bubbleSprite = GetComponent<SpriteRenderer>();
         RandomizeType();
+        name = $"Bubble_{Type}";
     }
 
     public void SetPathIndex(int index)
@@ -33,9 +34,9 @@ public class Bubble : MonoBehaviour
     private void UpdateVisual()
     {
         Color bubbleColor = GetColorForType(Type);
-        if (image != null)
+        if (bubbleSprite != null)
         {
-            image.color = bubbleColor;
+            bubbleSprite.color = bubbleColor;
         }
     }
 

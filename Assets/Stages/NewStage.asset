@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6fae816ee0ce489fa9694a0e749653f, type: 3}
   m_Name: NewStage
   m_EditorClassIdentifier: 
-  width: 11
   height: 15
   bubblePaths:
   - points:
@@ -34,7 +33,6 @@ MonoBehaviour:
     - {x: 1, y: 6}
     - {x: 2, y: 6}
     - {x: 3, y: 6}
-    - {x: 4, y: 6}
   - points:
     - {x: 6, y: 0}
     - {x: 7, y: 0}
@@ -54,6 +52,5 @@ MonoBehaviour:
     - {x: 9, y: 6}
     - {x: 8, y: 6}
     - {x: 7, y: 6}
-    - {x: 6, y: 6}
   totalBubbles: 20
-  totalPoints: 38
+  totalPoints: 36

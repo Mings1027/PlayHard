@@ -7,8 +7,6 @@ public class StageEditorWindow : EditorWindow
 {
     private StageData _currentStage;
     private BubblePath _currentPath;
-
-    // private BubbleType _selectedBubbleType = BubbleType.Red;
     private Vector2 _scrollPosition;
     private Texture2D _circleTex;
     private Vector2 _gridStartPos; // 그리드의 시작 위치를 저장
@@ -19,7 +17,7 @@ public class StageEditorWindow : EditorWindow
     private const float BubbleRadius = 15f;
     private const float BubbleSpacing = 2f;
 
-    private readonly HashSet<Vector2Int> _selectedBubbles = new(); // 이미 선택된 구슬들 추적
+    private readonly HashSet<Vector2Int> _selectedBubbles = new(); // 이미 선택된 버블들 추적
     private readonly Dictionary<BubblePath, Color> _pathColors = new();
 
     private static readonly Color[] PathColorPalette =
@@ -45,14 +43,14 @@ public class StageEditorWindow : EditorWindow
 
     private void CreateCircleTexture()
     {
-        int texSize = (int)(BubbleRadius * 2);
+        var texSize = (int)(BubbleRadius * 2);
         _circleTex = new Texture2D(texSize, texSize);
 
-        for (int y = 0; y < texSize; y++)
+        for (var y = 0; y < texSize; y++)
         {
-            for (int x = 0; x < texSize; x++)
+            for (var x = 0; x < texSize; x++)
             {
-                float distance = Vector2.Distance(new Vector2(x, y), new Vector2(texSize / 2, texSize / 2));
+                var distance = Vector2.Distance(new Vector2(x, y), new Vector2(texSize / 2, texSize / 2));
 
                 if (distance < texSize / 2)
                 {
@@ -111,7 +109,7 @@ public class StageEditorWindow : EditorWindow
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.HelpBox(
-            "Left Click + Drag: Create new path\n" +
+            "Left Click + Drag: Draw path\n" +
             "Right Click: Delete path\n" +
             "Clear All Paths: Delete all paths",
             MessageType.Info);
@@ -150,6 +148,8 @@ public class StageEditorWindow : EditorWindow
                 ClearAllPaths();
             }
         }
+
+        EditorGUILayout.Separator();
     }
 
     private void DrawStageSettings()
@@ -166,37 +166,36 @@ public class StageEditorWindow : EditorWindow
         }
     }
 
-
     private void DrawBubbleGrid()
     {
-        Rect scrollViewRect = GUILayoutUtility.GetRect(position.width, position.height - 100);
+        var scrollViewRect = GUILayoutUtility.GetRect(position.width, position.height - 100);
         _scrollPosition = GUI.BeginScrollView(scrollViewRect, _scrollPosition, GetTotalGridRect());
 
         _gridStartPos = new Vector2(scrollViewRect.x, scrollViewRect.y);
 
-        Rect totalRect = GetTotalGridRect();
+        var totalRect = GetTotalGridRect();
         EditorGUI.DrawRect(totalRect, new Color(0.2f, 0.2f, 0.2f));
 
         // 먼저 모든 경로의 색상을 할당
         EnsurePathColors();
 
         // 경로에 있는 버블 그리기
-        for (int y = 0; y < _currentStage.height; y++)
+        for (var y = 0; y < _currentStage.height; y++)
         {
-            int rowWidth = (y % 2 == 0) ? 11 : 10;
-            for (int x = 0; x < rowWidth; x++)
+            var rowWidth = y % 2 == 0 ? _currentStage.Width : _currentStage.Width - 1;
+            for (var x = 0; x < rowWidth; x++)
             {
-                Vector2Int gridPos = new Vector2Int(x, y);
-                Vector2 bubblePos = GetBubblePosition(gridPos);
+                var gridPos = new Vector2Int(x, y);
+                var bubblePos = GetBubblePosition(gridPos);
 
-                var path = _currentStage.GetBubblePathAt(gridPos);
+                var path = _currentStage.GetBubblePath(gridPos);
                 if (path != null)
                 {
                     // 경로에 속한 버블은 해당 경로의 색상으로 그리기
                     DrawBubble(bubblePos, _pathColors[path]);
 
                     // 순서 번호 표시
-                    int index = path.points.IndexOf(gridPos) + 1;
+                    var index = path.points.IndexOf(gridPos) + 1;
                     DrawBubbleNumber(bubblePos, index);
                 }
                 else
@@ -212,11 +211,11 @@ public class StageEditorWindow : EditorWindow
         {
             if (path.points.Count < 2) continue;
 
-            Color pathColor = _pathColors[path];
-            for (int i = 1; i < path.points.Count; i++)
+            var pathColor = _pathColors[path];
+            for (var i = 1; i < path.points.Count; i++)
             {
-                Vector2 start = GetBubblePosition(path.points[i - 1]);
-                Vector2 end = GetBubblePosition(path.points[i]);
+                var start = GetBubblePosition(path.points[i - 1]);
+                var end = GetBubblePosition(path.points[i]);
 
                 Handles.BeginGUI();
                 Handles.color = pathColor;
@@ -235,7 +234,7 @@ public class StageEditorWindow : EditorWindow
         {
             if (!_pathColors.ContainsKey(path))
             {
-                int colorIndex = _pathColors.Count % PathColorPalette.Length;
+                var colorIndex = _pathColors.Count % PathColorPalette.Length;
                 _pathColors[path] = PathColorPalette[colorIndex];
             }
         }
@@ -243,17 +242,17 @@ public class StageEditorWindow : EditorWindow
 
     private Rect GetTotalGridRect()
     {
-        float diameter = BubbleRadius * 2 + BubbleSpacing;
+        var diameter = BubbleRadius * 2 + BubbleSpacing;
         return new Rect(0, 0,
-            _currentStage.width * diameter + diameter,
+            _currentStage.Width * diameter + diameter,
             _currentStage.height * diameter * 0.866f + diameter);
     }
 
     private Vector2 GetBubblePosition(Vector2Int gridPos)
     {
-        float diameter = BubbleRadius * 2 + BubbleSpacing;
-        float xPos = gridPos.x * diameter;
-        float yPos = gridPos.y * diameter * 0.866f;
+        var diameter = BubbleRadius * 2 + BubbleSpacing; // 버블 지름
+        var xPos = gridPos.x * diameter;
+        var yPos = gridPos.y * diameter * 0.866f;
 
         if (gridPos.y % 2 != 0)
         {
@@ -273,7 +272,7 @@ public class StageEditorWindow : EditorWindow
             fontStyle = FontStyle.Bold
         };
 
-        Rect labelRect = new Rect(
+        var labelRect = new Rect(
             position.x - BubbleRadius,
             position.y - BubbleRadius,
             BubbleRadius * 2,
@@ -285,10 +284,10 @@ public class StageEditorWindow : EditorWindow
 
     private void DrawBubble(Vector2 position, Color color)
     {
-        Color originalColor = GUI.color;
+        var originalColor = GUI.color;
         GUI.color = color;
 
-        Rect bubbleRect = new Rect(
+        var bubbleRect = new Rect(
             position.x - BubbleRadius,
             position.y - BubbleRadius,
             BubbleRadius * 2,
@@ -303,7 +302,7 @@ public class StageEditorWindow : EditorWindow
     {
         if (_currentStage == null) return;
 
-        Vector2 mousePos = e.mousePosition;
+        var mousePos = e.mousePosition;
         mousePos.y -= _gridStartPos.y;
         mousePos += _scrollPosition;
 
@@ -349,55 +348,157 @@ public class StageEditorWindow : EditorWindow
 
     private void SelectBubbleAtPosition(Vector2 mousePos)
     {
-        for (int y = 0; y < _currentStage.height; y++)
+        var (gridPos, bubbleFound) = FindBubbleAtPosition(mousePos);
+        if (!bubbleFound) return;
+
+        // 이미 선택된 버블이면 무시
+        if (_selectedBubbles.Contains(gridPos)) return;
+
+        var existingPath = _currentStage.GetBubblePath(gridPos);
+        if (existingPath != null)
         {
-            int rowWidth = y % 2 == 0 ? _currentStage.width : _currentStage.width - 1;
+            HandleExistingPath(existingPath, gridPos);
+            return;
+        }
 
-            for (int x = 0; x < rowWidth; x++)
+        // 새로운 위치 추가
+        AddNewPointToPath(gridPos);
+    }
+
+    private (Vector2Int position, bool found) FindBubbleAtPosition(Vector2 mousePos)
+    {
+        for (var y = 0; y < _currentStage.height; y++)
+        {
+            var rowWidth = y % 2 == 0 ? _currentStage.Width : _currentStage.Width - 1;
+            for (var x = 0; x < rowWidth; x++)
             {
-                Vector2Int gridPos = new Vector2Int(x, y);
-                Vector2 bubblePos = GetBubblePosition(gridPos);
-                float distance = Vector2.Distance(mousePos, bubblePos);
-
-                if (distance <= BubbleRadius)
+                var gridPos = new Vector2Int(x, y);
+                if (IsPositionInBubble(mousePos, gridPos))
                 {
-                    if (_selectedBubbles.Contains(gridPos)) return;
-
-                    EditorUtility.SetDirty(_currentStage);
-                    _selectedBubbles.Add(gridPos);
-
-                    // 경로에 포인트 추가
-                    _currentPath?.points.Add(gridPos);
-
-                    return;
+                    return (gridPos, true);
                 }
             }
         }
+
+        return (Vector2Int.zero, false);
+    }
+
+    private bool IsPositionInBubble(Vector2 mousePos, Vector2Int gridPos)
+    {
+        var bubblePos = GetBubblePosition(gridPos);
+        return Vector2.Distance(mousePos, bubblePos) <= BubbleRadius;
+    }
+
+    private void HandleExistingPath(BubblePath existingPath, Vector2Int gridPos)
+    {
+        var isLastPosition = IsLastPositionInPath(existingPath, gridPos);
+
+        // 현재 진행 중인 빈 경로가 있다면 제거
+        RemoveEmptyCurrentPath();
+
+        if (isLastPosition)
+        {
+            ContinueExistingPath(existingPath);
+        }
+        else
+        {
+            CancelCurrentPathCreation();
+        }
+    }
+
+    private bool IsLastPositionInPath(BubblePath path, Vector2Int position)
+    {
+        return path.points.Count > 0 && path.points[^1] == position;
+    }
+
+    private void RemoveEmptyCurrentPath()
+    {
+        if (_currentPath != null && _currentPath.points.Count == 0)
+        {
+            _currentStage.bubblePaths.Remove(_currentPath);
+            _pathColors.Remove(_currentPath);
+        }
+    }
+
+    private void ContinueExistingPath(BubblePath existingPath)
+    {
+        _currentPath = existingPath;
+        UpdateSelectedBubbles(existingPath.points);
+    }
+
+    private void UpdateSelectedBubbles(List<Vector2Int> points)
+    {
+        _selectedBubbles.Clear();
+        _selectedBubbles.UnionWith(points);
+    }
+
+    private void CancelCurrentPathCreation()
+    {
+        _currentPath = null;
+        _isDragging = false;
+        _selectedBubbles.Clear();
+    }
+
+    private void AddNewPointToPath(Vector2Int gridPos)
+    {
+        if (_currentPath != null && _currentPath.points.Count > 0)
+        {
+            var lastPoint = _currentPath.points[^1];
+            if (!IsAdjacent(lastPoint, gridPos)) return;
+        }
+
+        EditorUtility.SetDirty(_currentStage);
+        _selectedBubbles.Add(gridPos);
+        _currentPath?.points.Add(gridPos);
+    }
+
+    private bool IsAdjacent(Vector2Int point1, Vector2Int point2)
+    {
+        // 두 점의 y좌표가 같은 경우 (같은 행)
+        if (point1.y == point2.y)
+        {
+            return Mathf.Abs(point1.x - point2.x) == 1;
+        }
+
+        // y좌표 차이가 1이 아닌 경우 인접하지 않음
+        if (Mathf.Abs(point1.y - point2.y) != 1)
+        {
+            return false;
+        }
+
+        // 홀수 행에서 짝수 행으로 이동하는 경우
+        if (point1.y % 2 == 1)
+        {
+            return point2.x == point1.x || point2.x == point1.x + 1;
+        }
+
+        // 짝수 행에서 홀수 행으로 이동하는 경우
+        return point2.x == point1.x || point2.x == point1.x - 1;
     }
 
     private void DeletePathAtPosition(Vector2 mousePos)
     {
-        for (int y = 0; y < _currentStage.height; y++)
+        for (var y = 0; y < _currentStage.height; y++)
         {
-            int rowWidth = y % 2 == 0 ? _currentStage.width : _currentStage.width - 1;
+            var rowWidth = y % 2 == 0 ? _currentStage.Width : _currentStage.Width - 1;
 
-            for (int x = 0; x < rowWidth; x++)
+            for (var x = 0; x < rowWidth; x++)
             {
-                Vector2Int gridPos = new Vector2Int(x, y);
-                Vector2 bubblePos = GetBubblePosition(gridPos);
-                float distance = Vector2.Distance(mousePos, bubblePos);
+                var gridPos = new Vector2Int(x, y);
+                var bubblePos = GetBubblePosition(gridPos);
+                var distance = Vector2.Distance(mousePos, bubblePos);
 
                 if (distance <= BubbleRadius)
                 {
-                    BubblePath pathToDelete = _currentStage.GetBubblePathAt(gridPos);
+                    var pathToDelete = _currentStage.GetBubblePath(gridPos);
                     if (pathToDelete != null)
                     {
                         // 우클릭한 위치의 인덱스 찾기
-                        int clickedIndex = pathToDelete.points.IndexOf(gridPos);
+                        var clickedIndex = pathToDelete.points.IndexOf(gridPos);
                         if (clickedIndex >= 0)
                         {
                             // 우클릭한 위치 이후의 포인트들만 제거
-                            int removeCount = pathToDelete.points.Count - clickedIndex;
+                            var removeCount = pathToDelete.points.Count - clickedIndex;
                             pathToDelete.points.RemoveRange(clickedIndex, removeCount);
 
                             // 포인트가 모두 제거된 경우 경로 자체를 제거
@@ -424,7 +525,7 @@ public class StageEditorWindow : EditorWindow
 
     private void LoadStage()
     {
-        string path = EditorUtility.OpenFilePanel("Load Stage", "Assets", "asset");
+        var path = EditorUtility.OpenFilePanel("Load Stage", "Assets", "asset");
 
         if (string.IsNullOrEmpty(path)) return;
 
@@ -436,7 +537,7 @@ public class StageEditorWindow : EditorWindow
     {
         if (_currentStage == null) return;
 
-        string path = EditorUtility.SaveFilePanel("Save Stage", "Assets", "NewStage.asset", "asset");
+        var path = EditorUtility.SaveFilePanel("Save Stage", "Assets", "NewStage.asset", "asset");
 
         if (string.IsNullOrEmpty(path)) return;
 

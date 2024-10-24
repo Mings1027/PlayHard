@@ -56,6 +56,7 @@ namespace UIControl
             {
                 EventManager.TriggerEvent(ActionEvent.PlayGame);
                 EventManager.TriggerEvent(ActionEvent.CreateStage);
+                
             });
         }
 

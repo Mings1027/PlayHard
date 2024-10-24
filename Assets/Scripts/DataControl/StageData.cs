@@ -15,7 +15,7 @@ namespace DataControl
     [CreateAssetMenu(fileName = "New Stage", menuName = "Bubble Game/Stage Data", order = 1)]
     public class StageData : ScriptableObject
     {
-        public int width = 11;
+        public int Width { get; private set; } = 11;
         public int height = 10;
         public List<BubblePath> bubblePaths = new();
 
@@ -28,7 +28,7 @@ namespace DataControl
             get => totalPoints;
             private set => totalPoints = value;
         }
-        
+
         public void UpdateTotalPoints()
         {
             TotalPoints = bubblePaths.Sum(path => path.points.Count);
@@ -48,9 +48,10 @@ namespace DataControl
         }
 
         // 특정 위치의 버블 경로 가져오기
-        public BubblePath GetBubblePathAt(Vector2Int position)
+        public BubblePath GetBubblePath(Vector2Int position)
         {
             return bubblePaths.Find(path => path.points.Contains(position));
         }
+
     }
 }

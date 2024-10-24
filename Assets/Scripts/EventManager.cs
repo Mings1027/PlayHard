@@ -7,12 +7,10 @@ public enum ActionEvent
     //Action
     //UI
     PlayGame,
-    SelectStage,
 
     //In Game
     CreateStage,
-    InitBubbleShooter,
-    GetBubbleAtPoint,
+    GetCurrentStage,
 }
 
 public static class EventManager
