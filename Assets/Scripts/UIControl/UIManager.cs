@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using DataControl;
 using DG.Tweening;
 using UnityEngine;
@@ -8,17 +9,11 @@ namespace UIControl
     public class UIManager : MonoBehaviour
     {
         [SerializeField] private Button[] animatedButtons;
-        [SerializeField] private float bounceScale = 1.2f;
-        [SerializeField] private float duration = 0.5f;
         [SerializeField] private Button playButton;
         [SerializeField] private GameObject titleUIPanel;
 
         [SerializeField] private GameObject stageSelectPanel;
         [SerializeField] private StageData stageData;
-
-        [SerializeField] private BoxCollider2D bubbleContainer;
-
-        private Sequence _playButtonSequence;
 
         private void Awake()
         {
@@ -41,7 +36,6 @@ namespace UIControl
         {
             titleUIPanel.SetActive(true);
             stageSelectPanel.SetActive(false);
-            bubbleContainer.gameObject.SetActive(false);
         }
 
         private void InitButtonAnimations()
@@ -60,9 +54,8 @@ namespace UIControl
             playButton.onClick.AddListener(() =>
             {
                 EventManager.TriggerEvent(ActionEvent.PlayGame);
-                EventManager.TriggerEvent(ActionEvent.CreateStage, stageData);
+                UniTaskEventManager.TriggerAsync(UniTaskEvent.CreateStage, stageData).Forget();
                 stageSelectPanel.SetActive(false);
-                bubbleContainer.gameObject.SetActive(true);
             });
         }
 

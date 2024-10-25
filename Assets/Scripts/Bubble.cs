@@ -1,45 +1,29 @@
-using System;
 using UnityEngine;
 
 [RequireComponent(typeof(SpriteRenderer))]
 public class Bubble : MonoBehaviour
 {
     private SpriteRenderer _bubbleSprite;
-    private BubbleType _type;
+    public BubbleType Type { get; private set; }
 
     private void Awake()
     {
         _bubbleSprite = GetComponent<SpriteRenderer>();
-        RandomizeType();
-        UpdateVisual();
 
 #if UNITY_EDITOR
-        name = $"Bubble_{_type}";
+        name = $"Bubble_{Type}";
 #endif
     }
 
-    private void RandomizeType()
+    public void SetType(BubbleType type, Sprite sprite)
     {
-        // BubbleType enum의 모든 값들을 배열로 가져옴
-        var values = Enum.GetValues(typeof(BubbleType));
-        // 랜덤한 인덱스 선택
-        var randomIndex = UnityEngine.Random.Range(0, values.Length);
-        // 선택된 타입 설정
-        _type = (BubbleType)values.GetValue(randomIndex);
-    }
-
-    private void UpdateVisual()
-    {
-        var bubbleColor = GetColorForType();
-        if (_bubbleSprite != null)
-        {
-            _bubbleSprite.color = bubbleColor;
-        }
+        Type = type;
+        _bubbleSprite.sprite = sprite;
     }
 
     public Color GetColorForType()
     {
-        return _type switch
+        return Type switch
         {
             BubbleType.Red => Color.red,
             BubbleType.Blue => Color.blue,
