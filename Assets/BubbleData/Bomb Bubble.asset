@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7203902bf3a4cc283a9f2a9ba90a306, type: 3}
+  m_Name: Bomb Bubble
+  m_EditorClassIdentifier: 
+  bubbleType: 0
+  specialBubbleType: 2
+  bubbleSprite: {fileID: 21300000, guid: aade4b5439bf44a1e87abaaa2898739e, type: 3}
+  isRandomBubble: 0
+  isSpecialBubble: 1
+  _overlaySprite: {fileID: 21300000, guid: aade4b5439bf44a1e87abaaa2898739e, type: 3}

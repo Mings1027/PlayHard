@@ -1,7 +1,5 @@
-using Cysharp.Threading.Tasks;
-using DataControl;
-using DG.Tweening;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace UIControl
@@ -11,9 +9,7 @@ namespace UIControl
         [SerializeField] private Button[] animatedButtons;
         [SerializeField] private Button playButton;
         [SerializeField] private GameObject titleUIPanel;
-
-        [SerializeField] private GameObject stageSelectPanel;
-        [SerializeField] private StageData stageData;
+        [SerializeField] private StageSelectManager stageSelectManager;
 
         private void Awake()
         {
@@ -22,20 +18,10 @@ namespace UIControl
             InitButtonEvents();
         }
 
-        private void OnEnable()
-        {
-            EventManager.AddEvent(ActionEvent.PlayGame, PlayGame);
-        }
-
-        private void OnDisable()
-        {
-            EventManager.RemoveEvent(ActionEvent.PlayGame, PlayGame);
-        }
-
         private void InitUI()
         {
             titleUIPanel.SetActive(true);
-            stageSelectPanel.SetActive(false);
+            stageSelectManager.gameObject.SetActive(false);
         }
 
         private void InitButtonAnimations()
@@ -51,23 +37,20 @@ namespace UIControl
 
         private void InitButtonEvents()
         {
-            playButton.onClick.AddListener(() =>
-            {
-                EventManager.TriggerEvent(ActionEvent.PlayGame);
-                UniTaskEventManager.TriggerAsync(UniTaskEvent.CreateStage, stageData).Forget();
-                stageSelectPanel.SetActive(false);
-            });
+            playButton.onClick.AddListener(PlayGame);
         }
 
         private void PlayGame()
         {
             titleUIPanel.SetActive(false);
-            stageSelectPanel.SetActive(true);
+            stageSelectManager.gameObject.SetActive(true);
+            stageSelectManager.gameObject.SetActive(false);
+            stageSelectManager.SelectStage(0);
         }
 
         private void GoHome()
         {
-            stageSelectPanel.SetActive(false);
+            stageSelectManager.gameObject.SetActive(false);
             titleUIPanel.SetActive(true);
         }
     }

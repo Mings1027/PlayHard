@@ -205,7 +205,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bubblePrefab: {fileID: 1946493651656694588, guid: 4c9ff12a744ac4ce7b7b8d9b79981363, type: 3}
   previewBubblePrefab: {fileID: 1946493651656694588, guid: 627354d57e7db4512b77548fd880f066, type: 3}
-  bubbleGlobalSetting: {fileID: 11400000, guid: 69ca87c5de74f45248073e575261f06c, type: 2}
+  bubbleDataList:
+  - {fileID: 11400000, guid: 877ced95e3fac4e158f1c2fc28a3b928, type: 2}
+  - {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
+  - {fileID: 11400000, guid: 37127efbc62ab4cc192448d1515ee902, type: 2}
+  - {fileID: 11400000, guid: e4ff53aa109e94be0bd519a0fd1a31d5, type: 2}
 --- !u!4 &418218438
 Transform:
   m_ObjectHideFlags: 0
@@ -575,6 +579,7 @@ Transform:
   m_Children:
   - {fileID: 539710470}
   - {fileID: 1277585655}
+  - {fileID: 862399049}
   m_Father: {fileID: 629001811}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &569729482
@@ -697,6 +702,7 @@ MonoBehaviour:
   bubbleCreator: {fileID: 418218437}
   shooterPivotParent: {fileID: 553411812}
   shooterPivot: {fileID: 1277585655}
+  readyPivot: {fileID: 862399049}
   maxBounces: 3
 --- !u!4 &629001811
 Transform:
@@ -886,6 +892,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &862399048
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 862399049}
+  m_Layer: 0
+  m_Name: Ready Pivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &862399049
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 862399048}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.35, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 553411812}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1045631768
 GameObject:
   m_ObjectHideFlags: 0
@@ -950,8 +987,7 @@ MonoBehaviour:
   - {fileID: 1814734877}
   playButton: {fileID: 1814734877}
   titleUIPanel: {fileID: 2067439659}
-  stageSelectPanel: {fileID: 1361353542}
-  stageData: {fileID: 11400000, guid: ecc7c446afa4c4bcdae149878a7b834e, type: 2}
+  stageSelectManager: {fileID: 1361353546}
 --- !u!114 &1045631776
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1141,8 +1177,9 @@ GameObject:
   - component: {fileID: 1361353543}
   - component: {fileID: 1361353545}
   - component: {fileID: 1361353544}
+  - component: {fileID: 1361353546}
   m_Layer: 5
-  m_Name: Stage Select Panel
+  m_Name: Stage Select Manager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1205,6 +1242,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1361353542}
   m_CullTransparentMesh: 1
+--- !u!114 &1361353546
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1361353542}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ccdead1149944d489a38e0ad9d2326b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stageButtonPrefab: {fileID: 8008484701329719988, guid: f871c1cd025434ca5821454d5cee094a, type: 3}
+  stageDataList:
+  - {fileID: 11400000, guid: f4a2c0ce6e7e3443b93fe5707f6779ee, type: 2}
 --- !u!1 &1680342346
 GameObject:
   m_ObjectHideFlags: 0
@@ -1256,7 +1308,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   popObjectKey: 0
-  bubbleGlobalSetting: {fileID: 11400000, guid: 69ca87c5de74f45248073e575261f06c, type: 2}
+  moveSpeed: 5
+  moveThreshold: 0.1
 --- !u!1 &1814734875
 GameObject:
   m_ObjectHideFlags: 0

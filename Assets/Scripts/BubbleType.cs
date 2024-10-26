@@ -4,3 +4,10 @@ public enum BubbleType
     Blue,
     Yellow,
 }
+
+public enum SpecialBubbleType
+{
+    None,
+    RandomSelect, 
+    Bomb
+}

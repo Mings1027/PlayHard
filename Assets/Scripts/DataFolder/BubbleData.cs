@@ -1,6 +1,7 @@
-using System;
+using System.Collections.Generic;
+using BubbleFolder;
+using InterfaceFolder;
 using UnityEngine;
-using Random = UnityEngine.Random;
 
 namespace DataControl
 {
@@ -8,12 +9,15 @@ namespace DataControl
     public class BubbleData : ScriptableObject
     {
         [SerializeField] private BubbleType bubbleType;
+        [SerializeField] protected SpecialBubbleType specialBubbleType;
         [SerializeField] private Sprite bubbleSprite;
         [SerializeField] private bool isRandomBubble;
+        [SerializeField] protected bool isSpecialBubble;
 
         public BubbleType BubbleType => bubbleType;
         public Sprite BubbleSprite => bubbleSprite;
         public bool IsRandomBubble => isRandomBubble;
+        public bool IsSpecialBubble => isSpecialBubble;
 
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using DataControl;
 using UnityEditor;
@@ -8,12 +9,14 @@ public class StageEditorWindow : EditorWindow
     private StageData _currentStage;
     private Vector2 _scrollPosition;
     private float _horizontalOffset;
+    private StageData[] _availableStages;
+    private int _currentStageIndex;
 
     private const float BubbleSize = 40f;
-    private float _horizontalSpacing = 2f;
-    private float _verticalSpacing = 2f;
+    private const float HorizontalSpacing = 3f;
+    private const float VerticalSpacing = 10f;
 
-    private BubbleData[] _availableBubbles;
+    private List<BubbleData> _availableBubbles;
     private BubbleData _selectedBubbleData;
     private BubbleData _randomBubbleData;
 
@@ -25,19 +28,57 @@ public class StageEditorWindow : EditorWindow
 
     private void OnEnable()
     {
+        LoadStageData();
         LoadBubbleData();
         LoadRandomBubbleData();
     }
 
+    private void LoadStageData()
+    {
+        // Find all StageData assets in the StageData folder
+        var guids = AssetDatabase.FindAssets("t:StageData", new[] { "Assets/StageData" });
+        _availableStages = guids
+                           .Select(guid =>
+                               AssetDatabase.LoadAssetAtPath<StageData>(AssetDatabase.GUIDToAssetPath(guid)))
+                           .OrderBy(stage =>
+                           {
+                               string assetPath = AssetDatabase.GetAssetPath(stage);
+                               string fileName = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+                               if (fileName.StartsWith("Level_") &&
+                                   int.TryParse(fileName.Substring("Level_".Length), out int level))
+                               {
+                                   return level;
+                               }
+
+                               return int.MaxValue;
+                           })
+                           .ToArray();
+
+        // Load the first stage if available
+        if (_availableStages != null && _availableStages.Length > 0)
+        {
+            _currentStageIndex = 0;
+            _currentStage = _availableStages[_currentStageIndex];
+        }
+        else
+        {
+            Debug.LogWarning("No stage data found in Assets/StageData folder");
+        }
+    }
+
     private void LoadBubbleData()
     {
-        // Assets/BubbleData 경로에서 모든 BubbleData 에셋을 로드
-        _availableBubbles = AssetDatabase
-                            .FindAssets("t:BubbleData", new[] { "Assets/BubbleData" })
-                            .Select(guid =>
-                                AssetDatabase.LoadAssetAtPath<BubbleData>(AssetDatabase.GUIDToAssetPath(guid)))
-                            .Where(bubble => bubble != null)
-                            .ToArray();
+        _availableBubbles ??= new List<BubbleData>();
+        _availableBubbles.Clear();
+        var guids = AssetDatabase.FindAssets("t:BubbleData", new[] { "Assets/BubbleData" });
+
+        foreach (var guid in guids)
+        {
+            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+            var bubbleData = AssetDatabase.LoadAssetAtPath<BubbleData>(assetPath);
+
+            _availableBubbles.Add(bubbleData);
+        }
     }
 
     private void LoadRandomBubbleData()
@@ -61,9 +102,12 @@ public class StageEditorWindow : EditorWindow
     {
         EditorGUILayout.BeginVertical();
 
+        EditorGUILayout.Space(5);
+        EditorGUILayout.BeginHorizontal();
         DrawCurrentStageInfo();
-        DrawToolbar();
-        DrawSpacingControls();
+        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.Space(5);
+
 
         if (_currentStage != null)
         {
@@ -78,63 +122,100 @@ public class StageEditorWindow : EditorWindow
 
     private void DrawCurrentStageInfo()
     {
-        EditorGUILayout.Space(5);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Current Stage:", EditorStyles.boldLabel);
-
-        var newStage = EditorGUILayout.ObjectField(_currentStage, typeof(StageData), false) as StageData;
-        if (newStage != null && newStage != _currentStage)
+        // 좌우 화살표 버튼과 현재 스테이지 정보 표시
+        var buttonStyle = new GUIStyle(EditorStyles.miniButton)
         {
-            _currentStage = newStage;
+            fixedWidth = 100,
+            fixedHeight = 30,
+            fontSize = 14,
+            fontStyle = FontStyle.Bold
+        };
+
+        if (GUILayout.Button("←", buttonStyle))
+        {
+            NavigateStage(-1);
         }
 
-        EditorGUILayout.EndHorizontal();
-        EditorGUILayout.Space(5);
-    }
-
-    private void DrawToolbar()
-    {
-        EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-
-        if (GUILayout.Button("New Stage", EditorStyles.toolbarButton))
-        {
-            CreateNewStage();
-        }
-
-        if (GUILayout.Button("Load Stage", EditorStyles.toolbarButton))
-        {
-            LoadStage();
-        }
-
-        if (GUILayout.Button("Save Stage", EditorStyles.toolbarButton))
-        {
-            SaveStage();
-        }
-
-        EditorGUILayout.EndHorizontal();
-    }
-
-    private void DrawSpacingControls()
-    {
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        EditorGUILayout.LabelField("Grid Spacing Settings", EditorStyles.boldLabel);
+        GUILayout.Label("Level", GUILayout.Width(50));
 
         EditorGUI.BeginChangeCheck();
-        _horizontalSpacing = EditorGUILayout.Slider("Horizontal Spacing", _horizontalSpacing, 0f, 20f);
-        _verticalSpacing = EditorGUILayout.Slider("Vertical Spacing", _verticalSpacing, 0f, 20f);
-        EditorGUILayout.EndVertical();
+
+        // 현재 스테이지의 레벨 번호 추출
+        int currentLevel = 1;
+        if (_currentStage != null)
+        {
+            string assetPath = AssetDatabase.GetAssetPath(_currentStage);
+            string fileName = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+            if (fileName.StartsWith("Level_"))
+            {
+                string numberPart = fileName.Substring("Level_".Length);
+                int.TryParse(numberPart, out currentLevel);
+            }
+        }
+
+        // 레벨 번호 입력 필드
+        int newLevel = EditorGUILayout.IntField(currentLevel, GUILayout.Width(100));
 
         if (EditorGUI.EndChangeCheck())
         {
-            Repaint();
+            // 입력된 레벨 번호에 해당하는 스테이지 찾기
+            string targetStagePath = $"Level_{newLevel}";
+            int newIndex = -1;
+
+            for (int i = 0; i < _availableStages.Length; i++)
+            {
+                string assetPath = AssetDatabase.GetAssetPath(_availableStages[i]);
+                string fileName = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+
+                if (fileName.Equals(targetStagePath))
+                {
+                    newIndex = i;
+                    break;
+                }
+            }
+
+            // 해당하는 스테이지가 있으면 로드
+            if (newIndex != -1)
+            {
+                _currentStageIndex = newIndex;
+                _currentStage = _availableStages[_currentStageIndex];
+            }
         }
+
+        if (GUILayout.Button("→", buttonStyle))
+        {
+            NavigateStage(1);
+        }
+
+        if (GUILayout.Button("+", buttonStyle))
+        {
+            CreateNewStage();
+        }
+    }
+
+    private void NavigateStage(int direction)
+    {
+        if (_availableStages == null || _availableStages.Length == 0)
+            return;
+        _currentStageIndex = (_currentStageIndex + direction + _availableStages.Length) % _availableStages.Length;
+        _currentStage = _availableStages[_currentStageIndex];
+        GUI.changed = true;
     }
 
     private void DrawStageSettings()
     {
         EditorGUI.BeginChangeCheck();
+
+        var maxBubbleHeight = _currentStage.BubbleDataPositions.Count > 0
+            ? _currentStage.BubbleDataPositions.Max(b => b.bubblePosition.y) + 1
+            : 1;
+        if (_currentStage.height < maxBubbleHeight)
+        {
+            _currentStage.height = maxBubbleHeight;
+        }
+
         _currentStage.height = EditorGUILayout.IntSlider("Height", _currentStage.height, 1, 100);
-        _currentStage.totalBubbles = EditorGUILayout.IntSlider("Total Bubbles", _currentStage.totalBubbles, 1, 30);
+        _currentStage.bubbleAmmo = EditorGUILayout.IntSlider("Total Bubbles", _currentStage.bubbleAmmo, 1, 30);
 
         if (EditorGUI.EndChangeCheck())
         {
@@ -142,15 +223,14 @@ public class StageEditorWindow : EditorWindow
         }
     }
 
-
     private void DrawBubbleSelection()
     {
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
         EditorGUILayout.LabelField("Bubble Selection", EditorStyles.boldLabel);
 
-        if (_availableBubbles == null || _availableBubbles.Length == 0)
+        if (_availableBubbles == null || _availableBubbles.Count == 0)
         {
-            EditorGUILayout.HelpBox("No bubble data found in Assets/BubbleData folder", MessageType.Warning);
+            EditorGUILayout.HelpBox("No bubble data found in BubbleGlobalSetting", MessageType.Warning);
             if (GUILayout.Button("Refresh Bubble Data"))
             {
                 LoadBubbleData();
@@ -162,25 +242,25 @@ public class StageEditorWindow : EditorWindow
 
         EditorGUILayout.BeginHorizontal();
 
-        for (int i = 0; i < _availableBubbles.Length; i++)
+        for (var i = 0; i < _availableBubbles.Count; i++)
         {
-            var bubble = _availableBubbles[i];
-            if (!bubble.IsRandomBubble) // 랜덤이 아닌 버블만 표시
+            var bubbleData = _availableBubbles[i];
+            if (bubbleData != null && !bubbleData.IsRandomBubble)
             {
                 if (GUILayout.Button("", GUILayout.Width(40), GUILayout.Height(40)))
                 {
-                    _selectedBubbleData = bubble;
+                    _selectedBubbleData = bubbleData;
                 }
 
                 var rect = GUILayoutUtility.GetLastRect();
-                EditorGUI.DrawRect(rect, Color.gray);
+                EditorGUI.DrawRect(rect, new Color(0.3f, 0.3f, 0.3f));
 
-                if (bubble.BubbleSprite != null)
+                if (bubbleData.BubbleSprite != null)
                 {
-                    GUI.DrawTexture(rect, bubble.BubbleSprite.texture, ScaleMode.ScaleToFit);
+                    GUI.DrawTexture(rect, bubbleData.BubbleSprite.texture, ScaleMode.ScaleToFit);
                 }
 
-                if (_selectedBubbleData == bubble)
+                if (_selectedBubbleData == bubbleData)
                 {
                     EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y - 2, rect.width + 4, 2), Color.white);
                     EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y + rect.height, rect.width + 4, 2), Color.white);
@@ -192,14 +272,13 @@ public class StageEditorWindow : EditorWindow
 
         // 랜덤 버튼
         var originalStyle = GUI.skin.button.fontSize;
-        GUI.skin.button.fontSize = 25; // 폰트 크기를 25로 설정
+        GUI.skin.button.fontSize = 25;
         if (GUILayout.Button("?", GUILayout.Width(40), GUILayout.Height(40)))
         {
             _selectedBubbleData = _randomBubbleData;
         }
 
-        GUI.skin.button.fontSize = originalStyle; // 원래 폰트 크기로 복구
-
+        GUI.skin.button.fontSize = originalStyle;
 
         var randomRect = GUILayoutUtility.GetLastRect();
         if (_selectedBubbleData == _randomBubbleData)
@@ -220,125 +299,206 @@ public class StageEditorWindow : EditorWindow
                 $"Selected Bubble: {(_selectedBubbleData.IsRandomBubble ? "Random" : _selectedBubbleData.BubbleType.ToString())}");
         }
 
+        EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("Refresh Bubble Data"))
         {
             LoadBubbleData();
         }
+
+        if (GUILayout.Button("Clear"))
+        {
+            if (EditorUtility.DisplayDialog("Clear All Bubbles", "Clear all bubbles in this stage?", "Yes", "No"))
+            {
+                _currentStage.BubbleDataPositions.Clear();
+                EditorUtility.SetDirty(_currentStage);
+            }
+        }
+
+        EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.EndVertical();
     }
 
     private void DrawBubbleGrid()
     {
-        var scrollViewRect = GUILayoutUtility.GetRect(position.width, position.height - 150);
-        _scrollPosition = GUI.BeginScrollView(scrollViewRect, _scrollPosition, GetTotalGridRect());
+        var viewRect = GUILayoutUtility.GetRect(position.width, position.height - 150);
+        var gridWidth = GetTotalGridWidth();
+        float leftMargin = CalculateLeftMargin(viewRect.width, gridWidth);
 
-        var totalRect = GetTotalGridRect();
-        EditorGUI.DrawRect(totalRect, new Color(0.2f, 0.2f, 0.2f));
+        var contentRect = SetupScrollView(viewRect);
+        EditorGUI.DrawRect(contentRect, new Color(0.2f, 0.2f, 0.2f));
 
+        DrawAllBubbles(leftMargin);
+        GUI.EndScrollView();
+    }
+
+    private float GetTotalGridWidth()
+    {
+        var horizontalStep = BubbleSize + HorizontalSpacing;
+        return _currentStage.Width * horizontalStep;
+    }
+
+    private float CalculateLeftMargin(float viewWidth, float gridWidth)
+    {
+        float leftMargin = (viewWidth - gridWidth) * 0.5f;
+        return Mathf.Max(0, leftMargin);
+    }
+
+    private Rect SetupScrollView(Rect viewRect)
+    {
+        var totalHeight = GetTotalGridHeight();
+        var contentRect = new Rect(0, 0, viewRect.width, totalHeight);
+
+        // 스크롤 위치를 y축으로만 제한
+        _scrollPosition.x = 0;
+        _scrollPosition.y = Mathf.Clamp(_scrollPosition.y, 0, Mathf.Max(0, totalHeight - viewRect.height));
+
+        _scrollPosition = GUI.BeginScrollView(viewRect,
+            new Vector2(0, _scrollPosition.y),
+            contentRect,
+            false,
+            true);
+
+        return contentRect;
+    }
+
+    private void DrawAllBubbles(float leftMargin)
+    {
         var cellNumber = 1;
-
-        // Draw all bubbles
         for (var y = 0; y < _currentStage.height; y++)
         {
             var rowWidth = y % 2 == 0 ? _currentStage.Width : _currentStage.Width - 1;
             for (var x = 0; x < rowWidth; x++)
             {
-                var gridPos = new Vector2Int(x, y);
-                var bubblePos = GetBubblePosition(gridPos);
-
-                // Check if a bubble exists at this position
-                var bubbleData = _currentStage.GetBubbleDataAt(gridPos);
-                if (bubbleData != null)
-                {
-                    // Draw bubble with its color
-                    DrawBubble(bubblePos, Color.gray);
-
-                    if (bubbleData.IsRandomBubble)
-                    {
-                        // Draw "?" for random bubbles
-                        var style = new GUIStyle(GUI.skin.label)
-                        {
-                            alignment = TextAnchor.MiddleCenter,
-                            normal = { textColor = Color.white },
-                            fontSize = 25,
-                            fontStyle = FontStyle.Bold
-                        };
-
-                        var questionMarkRect = new Rect(
-                            bubblePos.x - BubbleSize * 0.5f,
-                            bubblePos.y - BubbleSize * 0.5f,
-                            BubbleSize,
-                            BubbleSize
-                        );
-                        GUI.Label(questionMarkRect, "?", style);
-                    }
-                    else if (bubbleData.BubbleSprite != null)
-                    {
-                        // Draw sprite for non-random bubbles
-                        var spriteRect = new Rect(
-                            bubblePos.x - BubbleSize * 0.5f,
-                            bubblePos.y - BubbleSize * 0.5f,
-                            BubbleSize,
-                            BubbleSize
-                        );
-                        GUI.DrawTexture(spriteRect, bubbleData.BubbleSprite.texture, ScaleMode.ScaleToFit);
-                    }
-                }
-                else
-                {
-                    // Draw empty bubble
-                    DrawBubble(bubblePos, Color.gray);
-                }
-
-                DrawCellNumber(bubblePos, cellNumber);
+                DrawBubbleCell(new Vector2Int(x, y), leftMargin, cellNumber);
                 cellNumber++;
-
-                // Mouse interaction handling
-                var rect = new Rect(bubblePos.x - BubbleSize * 0.5f, bubblePos.y - BubbleSize * 0.5f,
-                    BubbleSize, BubbleSize);
-
-                var mousePosition = Event.current.mousePosition + _scrollPosition;
-                if (rect.Contains(mousePosition))
-                {
-                    // Left click: Place bubble
-                    if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
-                    {
-                        if (_selectedBubbleData != null)
-                        {
-                            _currentStage.AddBubbleData(gridPos, _selectedBubbleData);
-                            Event.current.Use();
-                            EditorUtility.SetDirty(_currentStage);
-                        }
-                    }
-                    // Right click: Remove bubble
-                    else if (Event.current.type == EventType.MouseUp && Event.current.button == 1)
-                    {
-                        _currentStage.RemoveBubbleData(gridPos);
-                        Event.current.Use();
-                        EditorUtility.SetDirty(_currentStage);
-                    }
-                }
             }
         }
-
-        GUI.EndScrollView();
     }
 
-    private Rect GetTotalGridRect()
+    private void DrawBubbleCell(Vector2Int gridPos, float leftMargin, int cellNumber)
     {
-        var horizontalStep = BubbleSize + _horizontalSpacing;
-        var verticalStep = (BubbleSize + _verticalSpacing) * 0.866f;
+        var bubblePos = GetBubblePosition(gridPos);
+        bubblePos.x += leftMargin;
 
-        return new Rect(0, 0,
-            _currentStage.Width * horizontalStep + horizontalStep,
-            _currentStage.height * verticalStep + BubbleSize);
+        var rect = GetBubbleRect(bubblePos);
+        var isHovered = IsCellHovered(rect);
+
+        DrawBaseBubbleBackground(bubblePos, isHovered);
+        DrawBubbleContent(gridPos, bubblePos);
+        DrawCellNumber(bubblePos, cellNumber);
+        HandleBubbleInteraction(rect, gridPos, leftMargin);
+    }
+
+    private Rect GetBubbleRect(Vector2 bubblePos)
+    {
+        return new Rect(
+            bubblePos.x - BubbleSize * 0.5f,
+            bubblePos.y - BubbleSize * 0.5f,
+            BubbleSize,
+            BubbleSize
+        );
+    }
+
+    private bool IsCellHovered(Rect rect)
+    {
+        var mousePosition = Event.current.mousePosition + new Vector2(0, _scrollPosition.y);
+        return rect.Contains(mousePosition);
+    }
+
+    private void DrawBaseBubbleBackground(Vector2 bubblePos, bool isHovered)
+    {
+        DrawBubble(bubblePos, new Color(0.3f, 0.3f, 0.3f), isHovered);
+    }
+
+    private void DrawBubbleContent(Vector2Int gridPos, Vector2 bubblePos)
+    {
+        var baseBubbleData = _currentStage.GetBaseBubbleDataAt(gridPos);
+        if (baseBubbleData != null)
+        {
+            DrawBaseBubble(bubblePos, baseBubbleData);
+            DrawSpecialBubbleOverlay(gridPos, bubblePos);
+        }
+    }
+
+    private void DrawBaseBubble(Vector2 bubblePos, BubbleData bubbleData)
+    {
+        var spriteRect = GetBubbleRect(bubblePos);
+
+        if (bubbleData.IsRandomBubble)
+        {
+            DrawRandomBubble(spriteRect);
+        }
+        else if (bubbleData.BubbleSprite != null)
+        {
+            GUI.DrawTexture(spriteRect, bubbleData.BubbleSprite.texture, ScaleMode.ScaleToFit);
+        }
+    }
+
+    private void DrawRandomBubble(Rect rect)
+    {
+        var style = new GUIStyle(GUI.skin.label)
+        {
+            alignment = TextAnchor.MiddleCenter,
+            normal = { textColor = Color.white },
+            fontSize = 25,
+            fontStyle = FontStyle.Bold
+        };
+
+        GUI.Label(rect, "?", style);
+    }
+
+    private void DrawSpecialBubbleOverlay(Vector2Int gridPos, Vector2 bubblePos)
+    {
+        var specialBubbleData = _currentStage.GetSpecialBubbleDataAt(gridPos);
+        if (specialBubbleData?.OverlaySprite != null)
+        {
+            var overlayRect = GetBubbleRect(bubblePos);
+            GUI.DrawTexture(overlayRect, specialBubbleData.OverlaySprite.texture, ScaleMode.ScaleToFit);
+        }
+    }
+
+    private void HandleBubbleInteraction(Rect rect, Vector2Int gridPos, float leftMargin)
+    {
+        if (!IsCellHovered(rect)) return;
+
+        if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+        {
+            HandleLeftClick(gridPos);
+        }
+        else if (Event.current.type == EventType.MouseUp && Event.current.button == 1)
+        {
+            HandleRightClick(gridPos);
+        }
+    }
+
+    private void HandleLeftClick(Vector2Int gridPos)
+    {
+        if (_selectedBubbleData != null)
+        {
+            _currentStage.AddBubbleData(gridPos, _selectedBubbleData);
+            Event.current.Use();
+            EditorUtility.SetDirty(_currentStage);
+        }
+    }
+
+    private void HandleRightClick(Vector2Int gridPos)
+    {
+        _currentStage.RemoveBubbleData(gridPos);
+        Event.current.Use();
+        EditorUtility.SetDirty(_currentStage);
+    }
+
+    private float GetTotalGridHeight()
+    {
+        var verticalStep = (BubbleSize + VerticalSpacing) * 0.866f;
+        return _currentStage.height * verticalStep + BubbleSize;
     }
 
     private Vector2 GetBubblePosition(Vector2Int gridPos)
     {
-        var horizontalStep = BubbleSize + _horizontalSpacing;
-        var verticalStep = (BubbleSize + _verticalSpacing) * 0.866f;
+        var horizontalStep = BubbleSize + HorizontalSpacing;
+        var verticalStep = (BubbleSize + VerticalSpacing) * 0.866f;
 
         var xPos = gridPos.x * horizontalStep;
         var yPos = gridPos.y * verticalStep;
@@ -372,7 +532,7 @@ public class StageEditorWindow : EditorWindow
         GUI.Label(labelRect, number.ToString(), style);
     }
 
-    private void DrawBubble(Vector2 position, Color color)
+    private void DrawBubble(Vector2 position, Color color, bool isHovered)
     {
         var halfSize = BubbleSize * 0.5f;
         var rect = new Rect(
@@ -381,34 +541,69 @@ public class StageEditorWindow : EditorWindow
             BubbleSize,
             BubbleSize
         );
-        EditorGUI.DrawRect(rect, color);
+
+        // 호버 상태일 때 더 밝은 색상 사용
+        var bubbleColor = isHovered ? new Color(0.4f, 0.4f, 0.4f) : color;
+        EditorGUI.DrawRect(rect, bubbleColor);
     }
 
     private void CreateNewStage()
     {
+        // 새 스테이지 생성
         _currentStage = CreateInstance<StageData>();
-    }
 
-    private void LoadStage()
-    {
-        var path = EditorUtility.OpenFilePanel("Load Stage", "Assets", "asset");
+        // Assets/StageData 폴더에서 현재 존재하는 가장 큰 레벨 번호 찾기
+        int maxLevelNumber = 0;
+        var guids = AssetDatabase.FindAssets("Level_", new[] { "Assets/StageData" });
 
-        if (string.IsNullOrEmpty(path)) return;
+        foreach (var guid in guids)
+        {
+            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+            string fileName = System.IO.Path.GetFileNameWithoutExtension(assetPath);
 
-        path = "Assets" + path.Substring(Application.dataPath.Length);
-        _currentStage = AssetDatabase.LoadAssetAtPath<StageData>(path);
-    }
+            if (fileName.StartsWith("Level_"))
+            {
+                string numberPart = fileName.Substring("Level_".Length);
+                if (int.TryParse(numberPart, out int levelNumber))
+                {
+                    maxLevelNumber = Mathf.Max(maxLevelNumber, levelNumber);
+                }
+            }
+        }
 
-    private void SaveStage()
-    {
-        if (_currentStage == null) return;
+        // 다음 레벨 번호 생성
+        int nextLevelNumber = maxLevelNumber + 1;
 
-        var path = EditorUtility.SaveFilePanel("Save Stage", "Assets", "NewStage.asset", "asset");
+        // Assets/StageData 폴더가 없다면 생성
+        if (!AssetDatabase.IsValidFolder("Assets/StageData"))
+        {
+            AssetDatabase.CreateFolder("Assets", "StageData");
+        }
 
-        if (string.IsNullOrEmpty(path)) return;
+        // 새 스테이지 저장
+        string newStagePath = $"Assets/StageData/Level_{nextLevelNumber}.asset";
 
-        path = "Assets" + path.Substring(Application.dataPath.Length);
-        AssetDatabase.CreateAsset(_currentStage, path);
+        // 에셋 생성 및 저장
+        AssetDatabase.CreateAsset(_currentStage, newStagePath);
         AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        // _availableStages 배열 업데이트
+        if (_availableStages == null || _availableStages.Length == 0)
+        {
+            _availableStages = new StageData[] { _currentStage };
+            _currentStageIndex = 0;
+        }
+        else
+        {
+            // 기존 배열에 새 스테이지 추가
+            var newArray = new StageData[_availableStages.Length + 1];
+            _availableStages.CopyTo(newArray, 0);
+            newArray[newArray.Length - 1] = _currentStage;
+            _availableStages = newArray;
+            _currentStageIndex = _availableStages.Length - 1;
+        }
+
+        Debug.Log($"Created new stage: Level_{nextLevelNumber}");
     }
 }

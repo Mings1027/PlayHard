@@ -4,16 +4,15 @@ using Cysharp.Threading.Tasks;
 
 public enum ActionEvent
 {
-    //Action
-    //UI
-    PlayGame,
-
     //In Game
+    AddBubble,
     CheckAndPopMatches,
 }
 
 public enum FuncEvent
 {
+    AllBubbles,
+    ExistingBubbleType,
 }
 
 public static class EventManager
