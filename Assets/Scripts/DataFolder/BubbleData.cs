@@ -12,6 +12,7 @@ namespace DataControl
         [SerializeField] protected bool isSpecialBubble;
 
         public BubbleType BubbleType => bubbleType;
+        public SpecialBubbleType SpecialBubbleType => specialBubbleType;
         public Sprite BubbleSprite => bubbleSprite;
         public bool IsRandomBubble => isRandomBubble;
         public bool IsSpecialBubble => isSpecialBubble;

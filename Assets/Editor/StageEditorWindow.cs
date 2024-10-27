@@ -226,7 +226,30 @@ public class StageEditorWindow : EditorWindow
     private void DrawBubbleSelection()
     {
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+        EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField("Bubble Selection", EditorStyles.boldLabel);
+        if (_selectedBubbleData != null)
+        {
+            string bubbleInfo;
+            if (_selectedBubbleData.IsRandomBubble)
+            {
+                bubbleInfo = "Random";
+            }
+            else if (_selectedBubbleData.IsSpecialBubble)
+            {
+                bubbleInfo =
+                    $"{_selectedBubbleData.SpecialBubbleType}";
+            }
+            else
+            {
+                bubbleInfo = $"{_selectedBubbleData.BubbleType}";
+            }
+
+            EditorGUILayout.LabelField($"- {bubbleInfo}", EditorStyles.boldLabel);
+        }
+
+        EditorGUILayout.EndHorizontal();
 
         if (_availableBubbles == null || _availableBubbles.Count == 0)
         {
@@ -292,12 +315,6 @@ public class StageEditorWindow : EditorWindow
         }
 
         EditorGUILayout.EndHorizontal();
-
-        if (_selectedBubbleData != null)
-        {
-            EditorGUILayout.LabelField(
-                $"Selected Bubble: {(_selectedBubbleData.IsRandomBubble ? "Random" : _selectedBubbleData.BubbleType.ToString())}");
-        }
 
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("Refresh Bubble Data"))
@@ -402,7 +419,7 @@ public class StageEditorWindow : EditorWindow
 
     private bool IsCellHovered(Rect rect)
     {
-        var mousePosition = Event.current.mousePosition + new Vector2(0, _scrollPosition.y);
+        var mousePosition = Event.current.mousePosition;
         return rect.Contains(mousePosition);
     }
 

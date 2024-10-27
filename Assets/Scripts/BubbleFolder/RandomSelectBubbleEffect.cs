@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using InterfaceFolder;
@@ -8,27 +9,28 @@ namespace BubbleFolder
 {
     public class RandomSelectBubbleEffect : ISpecialBubbleEffect
     {
-        public float CheckSize { get; set; }
-        public Collider2D[] Colliders { get; set; }
-
-        public RandomSelectBubbleEffect(Bubble bubble)
-        {
-            CheckSize = bubble.transform.localScale.x * 3;
-            Colliders = new Collider2D[1];
-        }
+        private readonly List<Bubble> _availableBubbles = new();
 
         public void ExecuteSpecialEffect(Bubble triggerBubble)
         {
-            Debug.Log(triggerBubble.name);
-            var size = Physics2D.OverlapCircleNonAlloc(triggerBubble.transform.position, CheckSize, Colliders);
-            if (size <= 0) return;
-            for (int i = 0; i < size; i++)
+            var allBubbles = FuncManager.TriggerEvent<List<Bubble>>(FuncEvent.AllBubbles);
+            _availableBubbles.Clear();
+
+            for (int i = 0; i < allBubbles.Count; i++)
             {
-                if (Colliders[i].TryGetComponent(out Bubble bubble))
+                if (!allBubbles[i].IsMarkedForPop)
                 {
-                    Debug.Log(Colliders[i].GetHashCode());
-                    MoveToPopBubble(triggerBubble.transform, bubble).Forget();
+                    _availableBubbles.Add(allBubbles[i]);
                 }
+            }
+
+            if (_availableBubbles.Count == 0) return;
+
+            var randomBubble = allBubbles[Random.Range(0, _availableBubbles.Count)];
+            randomBubble.MarkForPop();
+            if (randomBubble.TryGetComponent(out Bubble bubble))
+            {
+                MoveToPopBubble(triggerBubble.transform, bubble).Forget();
             }
         }
 

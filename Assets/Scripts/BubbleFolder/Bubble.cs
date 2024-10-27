@@ -2,6 +2,7 @@ using System;
 using Cysharp.Threading.Tasks;
 using DataControl;
 using InterfaceFolder;
+using PoolControl;
 using UnityEngine;
 
 [RequireComponent(typeof(SpriteRenderer))]
@@ -12,9 +13,12 @@ public class Bubble : MonoBehaviour
     public BubbleType Type { get; private set; }
     private ISpecialBubbleEffect _specialEffect;
     private bool _isSpecialBubble;
+    [field: SerializeField] public bool IsMarkedForPop { get; private set; }
+    private CircleCollider2D _circleCollider2D;
 
     private void Awake()
     {
+        _circleCollider2D = GetComponent<CircleCollider2D>();
         _bubbleSprite = GetComponent<SpriteRenderer>();
     }
 
@@ -66,11 +70,40 @@ public class Bubble : MonoBehaviour
             _ => Color.white
         };
 
+    public void MarkForPop() => IsMarkedForPop = true;
+
     public async UniTask ExecuteSpecialEffect()
     {
         if (!_isSpecialBubble || _specialEffect == null) return;
         GetComponent<CircleCollider2D>().enabled = false;
         await UniTask.Yield(destroyCancellationToken);
         _specialEffect.ExecuteSpecialEffect(this);
+    }
+
+    public async UniTask Pop()
+    {
+        if (!gameObject.activeSelf) return;
+        if (_isSpecialBubble && _specialEffect != null)
+        {
+            _circleCollider2D.enabled = false;
+            await ExecuteSpecialEffect();
+        }
+
+        gameObject.SetActive(false);
+
+        await PlayPopEffect();
+    }
+
+    private async UniTask PlayPopEffect()
+    {
+        // 팝 파티클 생성 및 설정
+        var popParticle = PoolObjectManager
+            .Get<ParticleSystem>(PoolObjectKey.PopBubbleEffect, transform, transform.localScale);
+
+        var mainModule = popParticle.main;
+        mainModule.startColor = new ParticleSystem.MinMaxGradient(GetColorForType());
+
+        // 파티클 재생 완료 대기 (선택적)
+        await UniTask.WaitUntil(() => !popParticle.isPlaying);
     }
 }

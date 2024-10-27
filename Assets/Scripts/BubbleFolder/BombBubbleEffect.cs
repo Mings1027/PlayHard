@@ -9,25 +9,26 @@ namespace BubbleFolder
 {
     public class BombBubbleEffect : ISpecialBubbleEffect
     {
-        public float CheckSize { get; set; }
-        public Collider2D[] Colliders { get; set; }
+        private readonly float _checkSize;
+        private readonly Collider2D[] _colliders;
 
         public BombBubbleEffect(Bubble bubble)
         {
-            CheckSize = bubble.transform.localScale.x;
-            Colliders = new Collider2D[6];
+            _checkSize = bubble.transform.localScale.x;
+            _colliders = new Collider2D[6];
         }
 
         public void ExecuteSpecialEffect(Bubble triggerBubble)
         {
             var bubblesToPop = new List<Bubble>();
 
-            var size = Physics2D.OverlapCircleNonAlloc(triggerBubble.transform.position, CheckSize, Colliders);
+            var size = Physics2D.OverlapCircleNonAlloc(triggerBubble.transform.position, _checkSize, _colliders);
             if (size <= 0) return;
             for (var i = 0; i < size; i++)
             {
-                if (Colliders[i].TryGetComponent(out Bubble bubble))
+                if (_colliders[i].TryGetComponent(out Bubble bubble))
                 {
+                    bubble.MarkForPop();
                     bubblesToPop.Add(bubble);
                 }
             }
@@ -45,7 +46,7 @@ namespace BubbleFolder
                 bubbles[i] =
                     PoolObjectManager.Get<Transform>(PoolObjectKey.PopIndicatorBubble, bubblesToPop[i].transform);
                 var originalScale = bubbles[i].localScale;
-                animationTasks[i] = bubbles[i].DOScale(originalScale * 1.5f, 0.5f)
+                animationTasks[i] = bubbles[i].DOScale(originalScale * 1.5f, 0.25f)
                                               .SetEase(Ease.OutQuad)
                                               .SetLoops(4, LoopType.Yoyo)
                                               .ToUniTask();

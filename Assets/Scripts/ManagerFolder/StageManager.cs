@@ -12,7 +12,7 @@ public class StageManager : MonoBehaviour
     [SerializeField] private BubbleShooter bubbleShooter;
     [SerializeField] private LayerMask bubbleLayer;
     [SerializeField] private PoolObjectKey popObjectKey;
-    
+
     private const int MinMatchCount = 3;
     private StageData _currentStage;
     private List<Bubble> _allBubbles;
@@ -23,8 +23,8 @@ public class StageManager : MonoBehaviour
     {
         _allBubbles = new List<Bubble>();
         _markedForDestroy = new List<Bubble>();
-        bubbleShooter.gameObject.SetActive(false);
 
+        bubbleShooter.gameObject.SetActive(false);
         Application.targetFrameRate = 60;
     }
 
@@ -38,6 +38,8 @@ public class StageManager : MonoBehaviour
         EventManager.AddEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
         EventManager.AddEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
         EventManager.AddEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
+
+        FuncManager.AddEvent(FuncEvent.AllBubbles, () => _allBubbles);
     }
 
     private void OnDisable()
@@ -50,6 +52,8 @@ public class StageManager : MonoBehaviour
         EventManager.RemoveEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
         EventManager.RemoveEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
         EventManager.RemoveEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
+
+        FuncManager.RemoveEvent(FuncEvent.AllBubbles, () => _allBubbles);
     }
 
     private async UniTask CreateStage(StageData stageData)
@@ -121,13 +125,13 @@ public class StageManager : MonoBehaviour
         }
     }
 
-    private List<Bubble> FindMatchingBubbles(Bubble startBubble)
+    private List<Bubble> FindMatchingBubbles(Bubble currentBubble)
     {
         var visited = new HashSet<Bubble>();
         var matchingBubbles = new List<Bubble>();
-        var bubbleType = startBubble.Type;
+        var bubbleType = currentBubble.Type;
 
-        FloodFill(startBubble, bubbleType, visited, matchingBubbles);
+        FloodFill(currentBubble, bubbleType, visited, matchingBubbles);
 
         if (matchingBubbles.Count < MinMatchCount)
         {
@@ -184,36 +188,40 @@ public class StageManager : MonoBehaviour
 
     private async UniTask PopMatchingBubbles(List<Bubble> bubbles)
     {
+        var popTasks = new UniTask[bubbles.Count];
         for (var i = 0; i < bubbles.Count; i++)
         {
-            _allBubbles.Remove(bubbles[i]);
+            var bubble = bubbles[i];
+            _allBubbles.Remove(bubble);
+            // 약간의 딜레이를 주어 순차적인 효과 생성
+            await UniTask.Delay(100, cancellationToken: destroyCancellationToken);
+            popTasks[i] = PopBubbleAndDestroy(bubble);
         }
 
-        await PopBubbles(bubbles);
-
-        for (var i = 0; i < bubbles.Count; i++)
-        {
-            bubbles[i].ExecuteSpecialEffect();
-        }
+        await UniTask.WhenAll(popTasks);
     }
 
     private async UniTask PopBubbles(List<Bubble> bubbles)
     {
         for (var i = 0; i < bubbles.Count; i++)
         {
-            PopSingleBubble(bubbles[i]);
+            var bubble = bubbles[i];
+            _allBubbles.Remove(bubble);
             await UniTask.Delay(100, cancellationToken: destroyCancellationToken);
+            await PopBubbleAndDestroy(bubble);
         }
     }
 
-    private void PopSingleBubble(Bubble bubble)
+    private async UniTask PopBubbleAndDestroy(Bubble bubble)
     {
-        bubble.gameObject.SetActive(false);
-        var popParticleObj = PoolObjectManager
-                             .Get<ParticleSystem>(PoolObjectKey.PopBubbleEffect, bubble.transform,
-                                 bubble.transform.localScale).main;
-        popParticleObj.startColor = new ParticleSystem.MinMaxGradient(bubble.GetColorForType());
+        await bubble.Pop();
         _markedForDestroy.Add(bubble);
+    }
+
+    private async void PopSingleBubble(Bubble bubble)
+    {
+        _allBubbles.Remove(bubble);
+        await PopBubbleAndDestroy(bubble);
     }
 
     private void AddBubble(Bubble bubble)

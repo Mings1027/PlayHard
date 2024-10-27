@@ -15,7 +15,7 @@ namespace DataControl
             if (!isSpecialBubble) return null;
             return specialBubbleType switch
             {
-                SpecialBubbleType.RandomSelect => new RandomSelectBubbleEffect(bubble),
+                SpecialBubbleType.RandomSelect => new RandomSelectBubbleEffect(),
                 SpecialBubbleType.Bomb => new BombBubbleEffect(bubble),
                 _ => null
             };
