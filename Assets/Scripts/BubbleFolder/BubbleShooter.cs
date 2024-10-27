@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using UnityEngine;
 
 public class BubbleShooter : MonoBehaviour
@@ -14,7 +15,6 @@ public class BubbleShooter : MonoBehaviour
     [SerializeField] private LayerMask bubbleLayer;
 
     [SerializeField] private BubbleCreator bubbleCreator;
-    [SerializeField] private Transform shooterPivotParent;
     [SerializeField] private Transform shooterPivot;
     [SerializeField] private Transform readyPivot;
 
@@ -50,7 +50,7 @@ public class BubbleShooter : MonoBehaviour
 
         var shooterY = Camera.main.ViewportToWorldPoint(new Vector3(0, 0.25f, 0)).y;
         _shooterPosition = new Vector3(0, shooterY, 0);
-        shooterPivotParent.position = _shooterPosition;
+        transform.position = _shooterPosition;
     }
 
     private void InitWall()
@@ -127,7 +127,7 @@ public class BubbleShooter : MonoBehaviour
         var currentDir = direction;
         var remainingLength = maxLineLength;
 
-        for (int i = 0; i < maxBounces; i++)
+        for (var i = 0; i < maxBounces; i++)
         {
             var wallHit = Physics2D.Raycast(currentPos, currentDir, maxLineLength, wallLayer);
             var bubbleHit = Physics2D.Raycast(currentPos, currentDir, maxLineLength, bubbleLayer);
@@ -189,19 +189,18 @@ public class BubbleShooter : MonoBehaviour
         var angle = Mathf.Atan2(hitDirection.y, hitDirection.x) * Mathf.Rad2Deg;
 
         if (angle < 0) angle += 360;
-
-        // hit.point가 hitBubble.x보다 크면 오른쪽아래
-        // hit.point가 hitBubble.x보다 작으면 왼쪽아래
-        var previewSnapPosition = Vector3.zero;
-
-        if (angle >= 330 || angle < 60)
-            previewSnapPosition = new Vector3(bubblePos.x + bubbleSize, bubblePos.y, 0);
-        else if (angle >= 120 && angle < 210)
-            previewSnapPosition = new Vector3(bubblePos.x - bubbleSize, bubblePos.y, 0);
-        else if (angle >= 210 && angle < 270)
-            previewSnapPosition = new Vector3(bubblePos.x - bubbleSize * 0.5f, bubblePos.y - verticalSpacing, 0);
-        else if (angle >= 270 && angle < 330)
-            previewSnapPosition = new Vector3(bubblePos.x + bubbleSize * 0.5f, bubblePos.y - verticalSpacing, 0);
+        var previewSnapPosition = angle switch
+        {
+            // 우
+            >= 330 or < 90 => new Vector3(bubblePos.x + bubbleSize, bubblePos.y, 0),
+            // 좌
+            >= 90 and < 210 => new Vector3(bubblePos.x - bubbleSize, bubblePos.y, 0),
+            // 좌 하단
+            >= 210 and < 270 => new Vector3(bubblePos.x - bubbleSize * 0.5f, bubblePos.y - verticalSpacing, 0),
+            // 우 하단
+            >= 270 and < 330 => new Vector3(bubblePos.x + bubbleSize * 0.5f, bubblePos.y - verticalSpacing, 0),
+            _ => Vector3.zero
+        };
 
         var bubbleHit = Physics2D.OverlapCircle(previewSnapPosition, bubbleSize * 0.4f, bubbleLayer);
         var wallHit = Physics2D.OverlapCircle(previewSnapPosition, bubbleSize * 0.4f, wallLayer);
@@ -228,7 +227,7 @@ public class BubbleShooter : MonoBehaviour
 
         var createBubbleTask = CreateBubble();
 
-        for (int i = 0; i < _bubbleLinePoints.Count - 1; i++)
+        for (var i = 0; i < _bubbleLinePoints.Count - 1; i++)
         {
             var startPos = _bubbleLinePoints[i];
             var endPos = _bubbleLinePoints[i + 1];
@@ -259,7 +258,7 @@ public class BubbleShooter : MonoBehaviour
 
     private async UniTask CreateBubble()
     {
-        // 두 버블 모두 없는 경우 (게임 시작 시)
+        // 게임 시작 시 둘 다 생성
         if (_readyBubble == null && _activeBubble == null)
         {
             // 대기 버블 생성
@@ -272,7 +271,6 @@ public class BubbleShooter : MonoBehaviour
             _activeBubble.transform.position = shooterPivot.position;
             _activeBubble.GetComponent<Collider2D>().enabled = false;
 
-            // 라인 렌더러 색상 설정
             var bubbleColor = _activeBubble.GetColorForType();
             _bubbleLine.startColor = bubbleColor;
             _bubbleLine.endColor = bubbleColor;
@@ -282,34 +280,45 @@ public class BubbleShooter : MonoBehaviour
         {
             // 대기 버블을 활성 버블로 이동
             _activeBubble = _readyBubble;
-            await MoveBubbleWithLerp(_activeBubble.transform,
-                readyPivot.position,
-                shooterPivot.position,
-                0.3f); // 이동 시간 0.3초
+            await MoveBubbleWithLerp(_activeBubble.transform, shooterPivot.position, 0.3f);
 
             // 새로운 대기 버블 생성
             _readyBubble = bubbleCreator.CreateRandomBubble(shooterPivot.position, Quaternion.identity);
             _readyBubble.transform.position = readyPivot.position;
             _readyBubble.GetComponent<Collider2D>().enabled = false;
 
-            // 라인 렌더러 색상 업데이트
             var bubbleColor = _activeBubble.GetColorForType();
             _bubbleLine.startColor = bubbleColor;
             _bubbleLine.endColor = bubbleColor;
         }
     }
 
-    private async UniTask MoveBubbleWithLerp(Transform bubble, Vector3 startPos, Vector3 endPos, float duration)
+    private static async UniTask MoveBubbleWithLerp(Transform bubble, Vector3 endPos, float duration)
     {
-        float elapsed = 0f;
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float progress = elapsed / duration;
-            bubble.position = Vector3.Lerp(startPos, endPos, progress);
-            await UniTask.Yield(PlayerLoopTiming.Update);
-        }
-
+        await bubble.DOMove(endPos, duration).SetEase(Ease.Linear);
         bubble.position = endPos; // 정확한 최종 위치 보장
+    }
+
+    private async UniTask SwapBubble()
+    {
+        _isShooting = true;
+        var activePos = _activeBubble.transform.position;
+        var readyPos = _readyBubble.transform.position;
+
+        await DOTween.Sequence().Join(_activeBubble.transform.DOMove(readyPos, 0.3f))
+                     .Join(_readyBubble.transform.DOMove(activePos, 0.3f));
+
+        (_activeBubble, _readyBubble) = (_readyBubble, _activeBubble);
+
+        var bubbleColor = _activeBubble.GetColorForType();
+        _bubbleLine.startColor = bubbleColor;
+        _bubbleLine.endColor = bubbleColor;
+        _isShooting = false;
+    }
+
+    private void OnMouseUp()
+    {
+        if (_isShooting || _activeBubble == null || _readyBubble == null) return;
+        SwapBubble().Forget();
     }
 }

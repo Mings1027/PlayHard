@@ -156,8 +156,11 @@ MonoBehaviour:
   autoCleanerDelay: 3
   poolMaxSize: 30
   pools:
-  - poolObjectKey: 0
+  - poolObjectKey: 101
     prefab: {fileID: 951251838019037038, guid: d1f906ddaeeee43ae88a748f4a7f4abd, type: 3}
+    initSize: 10
+  - poolObjectKey: 105
+    prefab: {fileID: 1946493651656694588, guid: c8c9e8b8fffe740f880169c6f13b69ab, type: 3}
     initSize: 10
 --- !u!4 &314149182
 Transform:
@@ -210,6 +213,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
   - {fileID: 11400000, guid: 37127efbc62ab4cc192448d1515ee902, type: 2}
   - {fileID: 11400000, guid: e4ff53aa109e94be0bd519a0fd1a31d5, type: 2}
+  bubbleGlobalSettingSO: {fileID: 11400000, guid: c581c15f12bdf41ca9e30390d0add61c, type: 2}
+  specialBubbleProbability: 0.3
 --- !u!4 &418218438
 Transform:
   m_ObjectHideFlags: 0
@@ -670,6 +675,7 @@ GameObject:
   - component: {fileID: 629001811}
   - component: {fileID: 629001810}
   - component: {fileID: 629001812}
+  - component: {fileID: 629001813}
   m_Layer: 0
   m_Name: Bubble Shooter
   m_TagString: Untagged
@@ -700,7 +706,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   bubbleCreator: {fileID: 418218437}
-  shooterPivotParent: {fileID: 553411812}
   shooterPivot: {fileID: 1277585655}
   readyPivot: {fileID: 862399049}
   maxBounces: 3
@@ -824,6 +829,41 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
+--- !u!58 &629001813
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 629001809}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  serializedVersion: 2
+  m_Radius: 0.5
 --- !u!1 &653529980
 GameObject:
   m_ObjectHideFlags: 0

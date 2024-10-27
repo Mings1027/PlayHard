@@ -7,6 +7,7 @@ public enum ActionEvent
     //In Game
     AddBubble,
     CheckAndPopMatches,
+    PopSingleBubble,
 }
 
 public enum FuncEvent

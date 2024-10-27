@@ -127,7 +127,7 @@ public class StageEditorWindow : EditorWindow
         {
             fixedWidth = 100,
             fixedHeight = 30,
-            fontSize = 14,
+            fontSize = 16,
             fontStyle = FontStyle.Bold
         };
 
@@ -387,7 +387,7 @@ public class StageEditorWindow : EditorWindow
         DrawBaseBubbleBackground(bubblePos, isHovered);
         DrawBubbleContent(gridPos, bubblePos);
         DrawCellNumber(bubblePos, cellNumber);
-        HandleBubbleInteraction(rect, gridPos, leftMargin);
+        HandleBubbleInteraction(rect, gridPos);
     }
 
     private Rect GetBubbleRect(Vector2 bubblePos)
@@ -458,7 +458,7 @@ public class StageEditorWindow : EditorWindow
         }
     }
 
-    private void HandleBubbleInteraction(Rect rect, Vector2Int gridPos, float leftMargin)
+    private void HandleBubbleInteraction(Rect rect, Vector2Int gridPos)
     {
         if (!IsCellHovered(rect)) return;
 

@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 using DataControl;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
@@ -13,23 +12,20 @@ public class StageManager : MonoBehaviour
     [SerializeField] private BubbleShooter bubbleShooter;
     [SerializeField] private LayerMask bubbleLayer;
     [SerializeField] private PoolObjectKey popObjectKey;
-
-    [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float moveThreshold = 0.1f;
-
+    
     private const int MinMatchCount = 3;
     private StageData _currentStage;
     private List<Bubble> _allBubbles;
     private List<Bubble> _markedForDestroy;
-    private HashSet<BubbleType> _existingBubbles;
     private bool _isMoving;
 
     private void Awake()
     {
         _allBubbles = new List<Bubble>();
         _markedForDestroy = new List<Bubble>();
-        _existingBubbles = new HashSet<BubbleType>();
         bubbleShooter.gameObject.SetActive(false);
+
+        Application.targetFrameRate = 60;
     }
 
     private void OnEnable()
@@ -37,12 +33,11 @@ public class StageManager : MonoBehaviour
         UniTaskEventManager.AddEvent<StageData>(UniTaskEvent.CreateStage, CreateStage);
         UniTaskEventManager.AddEvent(UniTaskEvent.ElevateBubbleContainer, ElevateBubbleContainer);
         UniTaskEventManager.AddEvent<List<Bubble>>(UniTaskEvent.PopBubbles, PopBubbles);
+        UniTaskEventManager.AddEvent<List<Bubble>>(UniTaskEvent.PopMatchingBubbles, PopMatchingBubbles);
 
         EventManager.AddEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
         EventManager.AddEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
-
-        FuncManager.AddEvent(FuncEvent.AllBubbles, () => _allBubbles);
-        FuncManager.AddEvent(FuncEvent.ExistingBubbleType, () => _existingBubbles);
+        EventManager.AddEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
     }
 
     private void OnDisable()
@@ -50,12 +45,11 @@ public class StageManager : MonoBehaviour
         UniTaskEventManager.RemoveEvent<StageData>(UniTaskEvent.CreateStage, CreateStage);
         UniTaskEventManager.RemoveEvent(UniTaskEvent.ElevateBubbleContainer, ElevateBubbleContainer);
         UniTaskEventManager.RemoveEvent<List<Bubble>>(UniTaskEvent.PopBubbles, PopBubbles);
+        UniTaskEventManager.RemoveEvent<List<Bubble>>(UniTaskEvent.PopMatchingBubbles, PopMatchingBubbles);
 
         EventManager.RemoveEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
         EventManager.RemoveEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
-
-        FuncManager.RemoveEvent(FuncEvent.AllBubbles, () => _allBubbles);
-        FuncManager.RemoveEvent(FuncEvent.ExistingBubbleType, () => _existingBubbles);
+        EventManager.RemoveEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
     }
 
     private async UniTask CreateStage(StageData stageData)
@@ -76,7 +70,7 @@ public class StageManager : MonoBehaviour
             Bubble bubble;
             if (bubblePosition.bubbleData.IsRandomBubble)
             {
-                bubble = bubbleCreator.CreateRandomBubble(worldPosition, Quaternion.identity);
+                bubble = bubbleCreator.CreateRandomBubbleWithChanceOfSpecial(worldPosition, Quaternion.identity);
             }
             else
             {
@@ -87,7 +81,6 @@ public class StageManager : MonoBehaviour
             bubble.transform.SetParent(bubbleContainer);
 
             _allBubbles.Add(bubble);
-            _existingBubbles.Add(bubble.Type);
 
             await UniTask.Yield(destroyCancellationToken);
         }
@@ -95,17 +88,25 @@ public class StageManager : MonoBehaviour
 
     private Vector3 CalculateBubblePosition(Vector2Int point)
     {
-        var containerTopPosition = bubbleContainer.position + Vector3.up * (_currentStage.height / 2f);
-
         var bubbleSize = bubbleCreator.BubbleSize;
-        var bubbleRadius = bubbleSize / 2f;
         var verticalSpacing = bubbleSize * 0.866f;
 
-        containerTopPosition.y -= bubbleRadius;
+        // 가장 낮은 y를 찾음
+        float lowestY = 0;
+        for (var i = 0; i < _currentStage.BubbleDataPositions.Count; i++)
+        {
+            var pos = _currentStage.BubbleDataPositions[i].bubblePosition;
+            lowestY = Mathf.Max(lowestY, pos.y);
+        }
+
+        // 컨테이너의 시작 위치 계산 (가장 낮은 버블이 y=0에 오도록)
+        var containerTopPosition = bubbleContainer.position;
+        containerTopPosition.y = lowestY * verticalSpacing;
 
         var bubblePosition = containerTopPosition;
         var xOffset = point.y % 2 == 1 ? bubbleSize * 0.5f : 0f;
         bubblePosition.x += (point.x - (_currentStage.Width - 1) / 2f) * bubbleSize + xOffset;
+        // y position 계산을 뒤집어서 아래에서부터 위로 생성되도록 함
         bubblePosition.y -= point.y * verticalSpacing;
 
         return bubblePosition;
@@ -186,7 +187,6 @@ public class StageManager : MonoBehaviour
         for (var i = 0; i < bubbles.Count; i++)
         {
             _allBubbles.Remove(bubbles[i]);
-            _existingBubbles.Remove(bubbles[i].Type);
         }
 
         await PopBubbles(bubbles);
@@ -199,31 +199,42 @@ public class StageManager : MonoBehaviour
 
     private async UniTask PopBubbles(List<Bubble> bubbles)
     {
-        for (int i = 0; i < bubbles.Count; i++)
+        for (var i = 0; i < bubbles.Count; i++)
         {
-            var bubble = bubbles[i];
-            bubble.gameObject.SetActive(false);
-            var popParticleObj = PoolObjectManager
-                                 .Get<ParticleSystem>(popObjectKey, bubble.transform,
-                                     bubble.transform.localScale).main;
-            popParticleObj.startColor = new ParticleSystem.MinMaxGradient(bubble.GetColorForType());
-            _markedForDestroy.Add(bubble);
-
+            PopSingleBubble(bubbles[i]);
             await UniTask.Delay(100, cancellationToken: destroyCancellationToken);
         }
+    }
+
+    private void PopSingleBubble(Bubble bubble)
+    {
+        bubble.gameObject.SetActive(false);
+        var popParticleObj = PoolObjectManager
+                             .Get<ParticleSystem>(PoolObjectKey.PopBubbleEffect, bubble.transform,
+                                 bubble.transform.localScale).main;
+        popParticleObj.startColor = new ParticleSystem.MinMaxGradient(bubble.GetColorForType());
+        _markedForDestroy.Add(bubble);
     }
 
     private void AddBubble(Bubble bubble)
     {
         _allBubbles.Add(bubble);
-        _existingBubbles.Add(bubble.Type);
         bubble.transform.SetParent(bubbleContainer);
     }
 
     private async UniTask ElevateBubbleContainer()
     {
         if (_allBubbles.Count == 0) return;
-        var lowestBubble = _allBubbles.Min(b => b.transform.position.y);
+        var lowestBubble = float.MaxValue;
+        for (var i = 0; i < _allBubbles.Count; i++)
+        {
+            var bubbleY = _allBubbles[i].transform.position.y;
+            if (bubbleY < lowestBubble)
+            {
+                lowestBubble = bubbleY;
+            }
+        }
+
         _isMoving = true;
 
         if (lowestBubble < 0)
@@ -242,11 +253,14 @@ public class StageManager : MonoBehaviour
         _isMoving = false;
     }
 
+    [ContextMenu("Pop All Bubbles")]
     private void EndStage()
     {
-        for (int i = _markedForDestroy.Count - 1; i >= 0; i--)
+        for (var i = _markedForDestroy.Count - 1; i >= 0; i--)
         {
-            Destroy(_markedForDestroy[i].gameObject);
+            var bubble = _markedForDestroy[i];
+            _markedForDestroy.Remove(bubble);
+            Destroy(bubble);
         }
     }
 }

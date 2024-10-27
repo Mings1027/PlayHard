@@ -1,4 +1,5 @@
 public enum PoolObjectKey
 {
-    PopBubbleEffect 
+    PopBubbleEffect = 101,
+    PopIndicatorBubble = 105,
 }

@@ -7,7 +7,7 @@ namespace PoolControl
     {
         public PoolObjectKey poolObjKey { get; set; }
 
-        private void OnDisable()
+        protected virtual void OnDisable()
         {
             PoolObjectManager.ReturnToPool(gameObject, poolObjKey);
         }

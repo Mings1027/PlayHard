@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DataControl;
+using PoolControl;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -10,6 +11,8 @@ public class BubbleCreator : MonoBehaviour
     [SerializeField] private GameObject bubblePrefab;
     [SerializeField] private GameObject previewBubblePrefab;
     [SerializeField] private BubbleData[] bubbleDataList;
+    [SerializeField] private BubbleGlobalSettingSO bubbleGlobalSettingSO;
+    [SerializeField] private float specialBubbleProbability = 0.3f;
 
     private Dictionary<BubbleType, BubbleData> _bubbleDataDict;
     public float BubbleSize { get; private set; }
@@ -39,7 +42,7 @@ public class BubbleCreator : MonoBehaviour
         var bubble = Instantiate(bubblePrefab, position, rotation).GetComponent<Bubble>();
         if (_bubbleDataDict.TryGetValue(bubbleType, out var bubbleData))
         {
-            bubble.Initialize(bubbleData, specialData, FuncManager.TriggerEvent<List<Bubble>>(FuncEvent.AllBubbles));
+            bubble.Initialize(bubbleData, specialData);
         }
         else
         {
@@ -51,18 +54,23 @@ public class BubbleCreator : MonoBehaviour
 
     public Bubble CreateRandomBubble(Vector3 position, Quaternion rotation)
     {
-        var existingBubbleTypeInStage = FuncManager.TriggerEvent<HashSet<BubbleType>>(FuncEvent.ExistingBubbleType);
-        BubbleType randomType;
-        if (existingBubbleTypeInStage.Count == 0)
+        var randomType = (BubbleType)Random.Range(0, Enum.GetValues(typeof(BubbleType)).Length);
+        return CreateBubble(randomType, position, rotation);
+    }
+
+    public Bubble CreateRandomBubbleWithChanceOfSpecial(Vector3 position, Quaternion rotation)
+    {
+        var canCreateSpecialBubble = Random.value < specialBubbleProbability;
+        var randomType = (BubbleType)Random.Range(0, Enum.GetValues(typeof(BubbleType)).Length);
+
+        SpecialBubbleData specialData = null;
+        if (canCreateSpecialBubble && bubbleGlobalSettingSO.SpecialBubbleData.Length > 0)
         {
-            randomType = (BubbleType)Random.Range(0, Enum.GetValues(typeof(BubbleType)).Length);
-        }
-        else
-        {
-            randomType = existingBubbleTypeInStage.ElementAt(Random.Range(0, existingBubbleTypeInStage.Count));
+            specialData = bubbleGlobalSettingSO.SpecialBubbleData
+                [Random.Range(0, bubbleGlobalSettingSO.SpecialBubbleData.Length)];
         }
 
-        return CreateBubble(randomType, position, rotation);
+        return CreateBubble(randomType, position, rotation, specialData);
     }
 
     public GameObject CreatePreviewBubble()

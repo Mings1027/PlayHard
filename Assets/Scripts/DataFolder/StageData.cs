@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace DataControl
@@ -38,9 +37,19 @@ namespace DataControl
         public List<BubbleDataAndPosition> BubbleDataPositions => bubbleDataPositions;
         public int bubbleAmmo;
 
+#if UNITY_EDITOR
+
         public void AddBubbleData(Vector2Int position, BubbleData bubbleData)
         {
-            var existingBubble = bubbleDataPositions.FirstOrDefault(b => b.bubblePosition == position);
+            BubbleDataAndPosition existingBubble = null;
+            for (int i = 0; i < bubbleDataPositions.Count; i++)
+            {
+                if (bubbleDataPositions[i].bubblePosition == position)
+                {
+                    existingBubble = bubbleDataPositions[i];
+                    break;
+                }
+            }
 
             if (existingBubble != null)
             {
@@ -59,9 +68,8 @@ namespace DataControl
             else
             {
                 // 새 위치에 버블 추가
-                if (bubbleData is SpecialBubbleData specialBubbleData)
+                if (bubbleData is SpecialBubbleData)
                 {
-                    // SpecialBubbleData는 단독으로 추가할 수 없음
                     Debug.LogWarning("Cannot add SpecialBubbleData without a base BubbleData");
                     return;
                 }
@@ -72,25 +80,62 @@ namespace DataControl
 
         public void RemoveBubbleData(Vector2Int position)
         {
-            bubbleDataPositions.RemoveAll(b => b.bubblePosition == position);
-        }
+            BubbleDataAndPosition bubbleData = null;
+            for (var i = 0; i < bubbleDataPositions.Count; i++)
+            {
+                if (bubbleDataPositions[i].bubblePosition == position)
+                {
+                    bubbleData = bubbleDataPositions[i];
+                    break;
+                }
+            }
 
-        public BubbleData GetBubbleDataAt(Vector2Int position)
-        {
-            var bubbleData = bubbleDataPositions.FirstOrDefault(b => b.bubblePosition == position);
-            return bubbleData?.specialBubbleData ?? bubbleData?.bubbleData;
+            if (bubbleData != null)
+            {
+                if (bubbleData.specialBubbleData != null)
+                {
+                    bubbleData.specialBubbleData = null;
+                }
+                else
+                {
+                    for (var i = 0; i < bubbleDataPositions.Count; i++)
+                    {
+                        if (bubbleDataPositions[i].bubblePosition == position)
+                        {
+                            bubbleDataPositions.RemoveAt(i);
+                        }
+                    }
+                }
+            }
         }
 
         // Special 버블 데이터 조회를 위한 새로운 메서드
         public SpecialBubbleData GetSpecialBubbleDataAt(Vector2Int position)
         {
-            return bubbleDataPositions.FirstOrDefault(b => b.bubblePosition == position)?.specialBubbleData;
+            for (var i = 0; i < bubbleDataPositions.Count; i++)
+            {
+                if (bubbleDataPositions[i].bubblePosition == position)
+                {
+                    return bubbleDataPositions[i].specialBubbleData;
+                }
+            }
+
+            return null;
         }
 
         // 기본 버블 데이터만 조회하는 메서드
         public BubbleData GetBaseBubbleDataAt(Vector2Int position)
         {
-            return bubbleDataPositions.FirstOrDefault(b => b.bubblePosition == position)?.bubbleData;
+            for (var i = 0; i < bubbleDataPositions.Count; i++)
+            {
+                if (bubbleDataPositions[i].bubblePosition == position)
+                {
+                    return bubbleDataPositions[i].bubbleData;
+                }
+            }
+
+            return null;
         }
+#endif
     }
 }

@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using BubbleFolder;
-using InterfaceFolder;
 using UnityEngine;
 
 namespace DataControl
@@ -18,6 +15,5 @@ namespace DataControl
         public Sprite BubbleSprite => bubbleSprite;
         public bool IsRandomBubble => isRandomBubble;
         public bool IsSpecialBubble => isSpecialBubble;
-
     }
 }

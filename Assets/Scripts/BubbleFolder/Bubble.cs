@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System;
 using Cysharp.Threading.Tasks;
 using DataControl;
 using InterfaceFolder;
@@ -18,7 +18,7 @@ public class Bubble : MonoBehaviour
         _bubbleSprite = GetComponent<SpriteRenderer>();
     }
 
-    public void Initialize(BubbleData bubbleData, SpecialBubbleData specialData = null, List<Bubble> allBubbles = null)
+    public void Initialize(BubbleData bubbleData, SpecialBubbleData specialData = null)
     {
         Type = bubbleData.BubbleType;
 
@@ -30,7 +30,7 @@ public class Bubble : MonoBehaviour
         if (specialData != null)
         {
             _isSpecialBubble = specialData.IsSpecialBubble;
-            _specialEffect = specialData.GetSpecialEffect(allBubbles);
+            _specialEffect = specialData.GetSpecialEffect(this);
             CreateOverlay(specialData.OverlaySprite);
         }
         else if (_overlaySprite != null)
@@ -48,7 +48,7 @@ public class Bubble : MonoBehaviour
             return;
         }
 
-        var overlayObject = new GameObject("Overlay");
+        var overlayObject = new GameObject();
         overlayObject.transform.SetParent(transform);
         overlayObject.transform.localPosition = Vector3.zero;
         overlayObject.transform.localScale = Vector3.one;
@@ -57,24 +57,20 @@ public class Bubble : MonoBehaviour
         _overlaySprite.sortingOrder = _bubbleSprite.sortingOrder + 1;
     }
 
-    public Color GetColorForType()
-    {
-        return Type switch
+    public Color GetColorForType() =>
+        Type switch
         {
             BubbleType.Red => Color.red,
             BubbleType.Blue => Color.blue,
             BubbleType.Yellow => Color.yellow,
             _ => Color.white
         };
-    }
 
-    public void ExecuteSpecialEffect()
+    public async UniTask ExecuteSpecialEffect()
     {
         if (!_isSpecialBubble || _specialEffect == null) return;
-        var bubblesToPop = _specialEffect.GetBubblesToPop(this);
-        if (bubblesToPop.Count > 0)
-        {
-            UniTaskEventManager.TriggerAsync(UniTaskEvent.PopBubbles, bubblesToPop).Forget();
-        }
+        GetComponent<CircleCollider2D>().enabled = false;
+        await UniTask.Yield(destroyCancellationToken);
+        _specialEffect.ExecuteSpecialEffect(this);
     }
 }

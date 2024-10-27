@@ -17,4 +17,4 @@ MonoBehaviour:
   bubbleSprite: {fileID: 21300000, guid: aade4b5439bf44a1e87abaaa2898739e, type: 3}
   isRandomBubble: 0
   isSpecialBubble: 1
-  _overlaySprite: {fileID: 21300000, guid: aade4b5439bf44a1e87abaaa2898739e, type: 3}
+  overlaySprite: {fileID: 21300000, guid: aade4b5439bf44a1e87abaaa2898739e, type: 3}
