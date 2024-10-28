@@ -286,7 +286,7 @@ public class BubbleShooter : MonoBehaviour
 
         bubble.SetPosition(_snapPosition);
         EventManager.TriggerEvent(ActionEvent.AddBubble, bubble);
-        EventManager.TriggerEvent(ActionEvent.CheckAndPopMatches, bubble);
+        EventManager.TriggerEvent(ActionEvent.CheckMatchingBubble, bubble);
 
         _isShooting = false;
 
@@ -297,20 +297,15 @@ public class BubbleShooter : MonoBehaviour
 
     private async UniTask CreateBubble()
     {
-        // 게임 시작 시 둘 다 생성
         if (_readyBubble == null && _activeBubble == null)
         {
             // 대기 버블 생성
             _readyBubble = bubbleCreator.CreateRandomBubble(readyPivot.position, Quaternion.identity);
-            _readyBubble.GetComponent<Collider2D>().enabled = false;
+            bubbleCreator.DisableBubbleCollider(_readyBubble);
 
             // 활성 버블 생성
             _activeBubble = bubbleCreator.CreateRandomBubble(shooterPivot.position, Quaternion.identity);
-            _activeBubble.GetComponent<Collider2D>().enabled = false;
-
-            var bubbleColor = _activeBubble.GetColorForType();
-            _bubbleLine.startColor = bubbleColor;
-            _bubbleLine.endColor = bubbleColor;
+            bubbleCreator.DisableBubbleCollider(_activeBubble);
         }
         // 활성 버블이 발사되어 없어진 경우
         else if (_activeBubble == null)
@@ -320,14 +315,19 @@ public class BubbleShooter : MonoBehaviour
             await MoveBubbleWithLerp(_activeBubble.transform, shooterPivot.position, 0.3f);
 
             // 새로운 대기 버블 생성
-            _readyBubble = bubbleCreator.CreateRandomBubble(shooterPivot.position, Quaternion.identity);
-            _readyBubble.transform.position = readyPivot.position;
-            _readyBubble.GetComponent<Collider2D>().enabled = false;
-
-            var bubbleColor = _activeBubble.GetColorForType();
-            _bubbleLine.startColor = bubbleColor;
-            _bubbleLine.endColor = bubbleColor;
+            _readyBubble = bubbleCreator.CreateRandomBubble(readyPivot.position, Quaternion.identity);
+            bubbleCreator.DisableBubbleCollider(_readyBubble);
         }
+
+        UpdateBubbleLineColor(_activeBubble);
+    }
+
+
+    private void UpdateBubbleLineColor(Bubble bubble)
+    {
+        var bubbleColor = bubble.GetColorForType();
+        _bubbleLine.startColor = bubbleColor;
+        _bubbleLine.endColor = bubbleColor;
     }
 
     private static async UniTask MoveBubbleWithLerp(Transform bubble, Vector3 endPos, float duration)

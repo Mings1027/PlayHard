@@ -40,7 +40,7 @@ namespace BubbleFolder
 
             popIndicatorBubble.gameObject.SetActive(false);
 
-            EventManager.TriggerEvent(ActionEvent.PopSingleBubble, popBubble);
+            EventManager.TriggerEvent(ActionEvent.PopBubble, popBubble);
         }
     }
 }

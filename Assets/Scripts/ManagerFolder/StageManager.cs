@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using DataControl;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using HelperFolder;
 
 public class StageManager : MonoBehaviour
 {
@@ -10,24 +11,30 @@ public class StageManager : MonoBehaviour
     [SerializeField] private Transform bubbleContainer;
     [SerializeField] private BubbleShooter bubbleShooter;
     [SerializeField] private LayerMask bubbleLayer;
-    [SerializeField] private PoolObjectKey popObjectKey;
 
-    private const int MinMatchCount = 3;
     private StageData _currentStage;
     private List<Bubble> _allBubbles;
     private List<Bubble> _visibleBubbles;
     private List<Bubble> _markedForDestroy;
-    private bool _isMoving;
+
+    private List<Bubble> _normalBubbles;
+    private List<Bubble> _specialBubbles;
     private float _safeAreaTopY;
+
+    private BubbleMatchHelper _bubbleMatchHelper;
 
     private void Awake()
     {
         _allBubbles = new List<Bubble>();
         _visibleBubbles = new List<Bubble>();
         _markedForDestroy = new List<Bubble>();
+        _normalBubbles = new List<Bubble>();
+        _specialBubbles = new List<Bubble>();
 
         var safeArea = Screen.safeArea;
         _safeAreaTopY = Camera.main.ScreenToWorldPoint(new Vector3(0, safeArea.yMax, 0)).y;
+
+        _bubbleMatchHelper = new BubbleMatchHelper(bubbleLayer, _safeAreaTopY);
 
         bubbleShooter.gameObject.SetActive(false);
 #if !UNITY_EDITOR
@@ -41,9 +48,9 @@ public class StageManager : MonoBehaviour
         UniTaskEventManager.AddEvent(UniTaskEvent.ElevateBubbleContainer, ElevateBubbleContainer);
         UniTaskEventManager.AddEvent<List<Bubble>>(UniTaskEvent.PopMatchingBubbles, PopMatchingBubbles);
 
-        EventManager.AddEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
+        EventManager.AddEvent<Bubble>(ActionEvent.CheckMatchingBubble, CheckMatchingBubble);
         EventManager.AddEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
-        EventManager.AddEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
+        EventManager.AddEvent<Bubble>(ActionEvent.PopBubble, PopOneBubble);
 
         FuncManager.AddEvent(FuncEvent.VisibleBubbles, GetVisibleBubbles);
     }
@@ -54,9 +61,9 @@ public class StageManager : MonoBehaviour
         UniTaskEventManager.RemoveEvent(UniTaskEvent.ElevateBubbleContainer, ElevateBubbleContainer);
         UniTaskEventManager.RemoveEvent<List<Bubble>>(UniTaskEvent.PopMatchingBubbles, PopMatchingBubbles);
 
-        EventManager.RemoveEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
+        EventManager.RemoveEvent<Bubble>(ActionEvent.CheckMatchingBubble, CheckMatchingBubble);
         EventManager.RemoveEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
-        EventManager.RemoveEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
+        EventManager.RemoveEvent<Bubble>(ActionEvent.PopBubble, PopOneBubble);
 
         FuncManager.RemoveEvent(FuncEvent.VisibleBubbles, GetVisibleBubbles);
     }
@@ -121,92 +128,56 @@ public class StageManager : MonoBehaviour
         return bubblePosition;
     }
 
-    private void CheckAndPopMatches(Bubble currentBubble)
+    private void CheckMatchingBubble(Bubble currentBubble)
     {
-        var matchingBubbles = FindMatchingBubbles(currentBubble);
+        var matchingBubbles = _bubbleMatchHelper.FindMatchingBubbles(currentBubble);
         if (matchingBubbles.Count > 0)
         {
             PopMatchingBubbles(matchingBubbles).Forget();
         }
     }
 
-    private List<Bubble> FindMatchingBubbles(Bubble currentBubble)
-    {
-        var visited = new HashSet<Bubble>();
-        var matchingBubbles = new List<Bubble>();
-        var bubbleType = currentBubble.Type;
-
-        FloodFill(currentBubble, bubbleType, visited, matchingBubbles);
-
-        if (matchingBubbles.Count < MinMatchCount)
-        {
-            matchingBubbles.Clear();
-        }
-
-        return matchingBubbles;
-    }
-
-    private void FloodFill(Bubble bubble, BubbleType targetType, HashSet<Bubble> visited,
-                           List<Bubble> matchingBubbles)
-    {
-        if (bubble == null || visited.Contains(bubble) ||
-            bubble.Type != targetType || bubble.transform.position.y > _safeAreaTopY)
-            return;
-
-        visited.Add(bubble);
-        matchingBubbles.Add(bubble);
-
-        var neighbors = GetNeighborBubbles(bubble);
-        foreach (var neighbor in neighbors)
-        {
-            FloodFill(neighbor, targetType, visited, matchingBubbles);
-        }
-    }
-
-    private List<Bubble> GetNeighborBubbles(Bubble bubble)
-    {
-        var neighbors = new List<Bubble>();
-        var bubbleSize = bubble.transform.localScale.x;
-        var verticalSpacing = bubbleSize * 0.866f;
-
-        var directions = new Vector2[]
-        {
-            new(bubbleSize, 0),
-            new(bubbleSize * 0.5f, verticalSpacing),
-            new(-bubbleSize * 0.5f, verticalSpacing),
-            new(-bubbleSize, 0),
-            new(-bubbleSize * 0.5f, -verticalSpacing),
-            new(bubbleSize * 0.5f, -verticalSpacing)
-        };
-
-        foreach (var direction in directions)
-        {
-            var checkPosition = (Vector2)bubble.transform.position + direction;
-            var hit = Physics2D.OverlapCircle(checkPosition, bubbleSize * 0.4f, bubbleLayer);
-            if (hit != null && hit.TryGetComponent(out Bubble hitBubble))
-            {
-                neighbors.Add(hitBubble);
-            }
-        }
-
-        return neighbors;
-    }
-
     private async UniTask PopMatchingBubbles(List<Bubble> bubbles)
     {
-        for (var i = 0; i < bubbles.Count; i++)
+        _normalBubbles.Clear();
+        _specialBubbles.Clear();
+
+        CheckBubbleType(bubbles);
+
+        await PopBubbles(_normalBubbles);
+        await PopBubbles(_specialBubbles);
+    }
+
+    private void CheckBubbleType(List<Bubble> bubbles)
+    {
+        for (int i = 0; i < bubbles.Count; i++)
         {
-            var bubble = bubbles[i];
-            _allBubbles.Remove(bubble);
-            await UniTask.Delay(100, cancellationToken: destroyCancellationToken);
-            PopBubbleAndDestroy(bubble);
+            if (bubbles[i].IsSpecialBubble)
+            {
+                _specialBubbles.Add(bubbles[i]);
+            }
+            else
+            {
+                _normalBubbles.Add(bubbles[i]);
+            }
         }
     }
 
-    private void PopBubbleAndDestroy(Bubble bubble)
+    private async UniTask PopBubbles(List<Bubble> bubbles)
     {
-        bubble.Pop();
+        for (int i = 0; i < bubbles.Count; i++)
+        {
+            var bubble = bubbles[i];
+            PopOneBubble(bubble);
+            await UniTask.Delay(100, cancellationToken: destroyCancellationToken);
+        }
+    }
+
+    private void PopOneBubble(Bubble bubble)
+    {
+        _allBubbles.Remove(bubble);
         _markedForDestroy.Add(bubble);
+        bubble.Pop();
     }
 
     private List<Bubble> GetVisibleBubbles()
@@ -221,12 +192,6 @@ public class StageManager : MonoBehaviour
         }
 
         return _visibleBubbles;
-    }
-
-    private void PopSingleBubble(Bubble bubble)
-    {
-        _allBubbles.Remove(bubble);
-        PopBubbleAndDestroy(bubble);
     }
 
     private void AddBubble(Bubble bubble)
@@ -248,8 +213,6 @@ public class StageManager : MonoBehaviour
             }
         }
 
-        _isMoving = true;
-
         if (lowestBubble < 0)
         {
             // 아래쪽 버블이 화면 밖으로 나갔을 때 위로 올림
@@ -262,8 +225,6 @@ public class StageManager : MonoBehaviour
             await bubbleContainer.DOMoveY(bubbleContainer.position.y - lowestBubble, 0.2f)
                                  .SetEase(Ease.OutQuint);
         }
-
-        _isMoving = false;
     }
 
     [ContextMenu("Pop All Bubbles")]

@@ -13,6 +13,7 @@ public class Bubble : MonoBehaviour
     private CircleCollider2D _circleCollider;
     private bool _isSpecialBubble;
     [field: SerializeField] public bool IsMarkedForPop { get; private set; }
+    public bool IsSpecialBubble => _isSpecialBubble;
 
     private void Awake()
     {

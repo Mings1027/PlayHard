@@ -75,4 +75,12 @@ public class BubbleCreator : MonoBehaviour
     {
         return Instantiate(previewBubblePrefab);
     }
+    
+    public void DisableBubbleCollider(Bubble bubble)
+    {
+        if (bubble.TryGetComponent(out CircleCollider2D circleCollider2D))
+        {
+            circleCollider2D.enabled = false;
+        }
+    }
 }
