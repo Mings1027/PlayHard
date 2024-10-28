@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using DataControl;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
-using PoolControl;
 
 public class StageManager : MonoBehaviour
 {
@@ -16,51 +15,57 @@ public class StageManager : MonoBehaviour
     private const int MinMatchCount = 3;
     private StageData _currentStage;
     private List<Bubble> _allBubbles;
+    private List<Bubble> _visibleBubbles;
     private List<Bubble> _markedForDestroy;
     private bool _isMoving;
+    private float _safeAreaTopY;
 
     private void Awake()
     {
         _allBubbles = new List<Bubble>();
+        _visibleBubbles = new List<Bubble>();
         _markedForDestroy = new List<Bubble>();
 
+        var safeArea = Screen.safeArea;
+        _safeAreaTopY = Camera.main.ScreenToWorldPoint(new Vector3(0, safeArea.yMax, 0)).y;
+
         bubbleShooter.gameObject.SetActive(false);
+#if !UNITY_EDITOR
         Application.targetFrameRate = 60;
+#endif
     }
 
     private void OnEnable()
     {
         UniTaskEventManager.AddEvent<StageData>(UniTaskEvent.CreateStage, CreateStage);
         UniTaskEventManager.AddEvent(UniTaskEvent.ElevateBubbleContainer, ElevateBubbleContainer);
-        UniTaskEventManager.AddEvent<List<Bubble>>(UniTaskEvent.PopBubbles, PopBubbles);
         UniTaskEventManager.AddEvent<List<Bubble>>(UniTaskEvent.PopMatchingBubbles, PopMatchingBubbles);
 
         EventManager.AddEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
         EventManager.AddEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
         EventManager.AddEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
 
-        FuncManager.AddEvent(FuncEvent.AllBubbles, () => _allBubbles);
+        FuncManager.AddEvent(FuncEvent.VisibleBubbles, GetVisibleBubbles);
     }
 
     private void OnDisable()
     {
         UniTaskEventManager.RemoveEvent<StageData>(UniTaskEvent.CreateStage, CreateStage);
         UniTaskEventManager.RemoveEvent(UniTaskEvent.ElevateBubbleContainer, ElevateBubbleContainer);
-        UniTaskEventManager.RemoveEvent<List<Bubble>>(UniTaskEvent.PopBubbles, PopBubbles);
         UniTaskEventManager.RemoveEvent<List<Bubble>>(UniTaskEvent.PopMatchingBubbles, PopMatchingBubbles);
 
         EventManager.RemoveEvent<Bubble>(ActionEvent.CheckAndPopMatches, CheckAndPopMatches);
         EventManager.RemoveEvent<Bubble>(ActionEvent.AddBubble, AddBubble);
         EventManager.RemoveEvent<Bubble>(ActionEvent.PopSingleBubble, PopSingleBubble);
 
-        FuncManager.RemoveEvent(FuncEvent.AllBubbles, () => _allBubbles);
+        FuncManager.RemoveEvent(FuncEvent.VisibleBubbles, GetVisibleBubbles);
     }
 
     private async UniTask CreateStage(StageData stageData)
     {
         _currentStage = stageData;
-        bubbleShooter.Init();
         await CreateBubblesFromPositions();
+        bubbleShooter.Init();
         bubbleShooter.gameObject.SetActive(true);
     }
 
@@ -144,7 +149,8 @@ public class StageManager : MonoBehaviour
     private void FloodFill(Bubble bubble, BubbleType targetType, HashSet<Bubble> visited,
                            List<Bubble> matchingBubbles)
     {
-        if (bubble == null || visited.Contains(bubble) || bubble.Type != targetType)
+        if (bubble == null || visited.Contains(bubble) ||
+            bubble.Type != targetType || bubble.transform.position.y > _safeAreaTopY)
             return;
 
         visited.Add(bubble);
@@ -188,40 +194,39 @@ public class StageManager : MonoBehaviour
 
     private async UniTask PopMatchingBubbles(List<Bubble> bubbles)
     {
-        var popTasks = new UniTask[bubbles.Count];
-        for (var i = 0; i < bubbles.Count; i++)
-        {
-            var bubble = bubbles[i];
-            _allBubbles.Remove(bubble);
-            // 약간의 딜레이를 주어 순차적인 효과 생성
-            await UniTask.Delay(100, cancellationToken: destroyCancellationToken);
-            popTasks[i] = PopBubbleAndDestroy(bubble);
-        }
-
-        await UniTask.WhenAll(popTasks);
-    }
-
-    private async UniTask PopBubbles(List<Bubble> bubbles)
-    {
         for (var i = 0; i < bubbles.Count; i++)
         {
             var bubble = bubbles[i];
             _allBubbles.Remove(bubble);
             await UniTask.Delay(100, cancellationToken: destroyCancellationToken);
-            await PopBubbleAndDestroy(bubble);
+            PopBubbleAndDestroy(bubble);
         }
     }
 
-    private async UniTask PopBubbleAndDestroy(Bubble bubble)
+    private void PopBubbleAndDestroy(Bubble bubble)
     {
-        await bubble.Pop();
+        bubble.Pop();
         _markedForDestroy.Add(bubble);
     }
 
-    private async void PopSingleBubble(Bubble bubble)
+    private List<Bubble> GetVisibleBubbles()
+    {
+        _visibleBubbles.Clear();
+        for (var i = 0; i < _allBubbles.Count; i++)
+        {
+            if (_allBubbles[i].transform.position.y <= _safeAreaTopY)
+            {
+                _visibleBubbles.Add(_allBubbles[i]);
+            }
+        }
+
+        return _visibleBubbles;
+    }
+
+    private void PopSingleBubble(Bubble bubble)
     {
         _allBubbles.Remove(bubble);
-        await PopBubbleAndDestroy(bubble);
+        PopBubbleAndDestroy(bubble);
     }
 
     private void AddBubble(Bubble bubble)

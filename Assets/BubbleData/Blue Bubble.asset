@@ -13,5 +13,7 @@ MonoBehaviour:
   m_Name: Blue Bubble
   m_EditorClassIdentifier: 
   bubbleType: 1
-  bubbleSprite: {fileID: 21300000, guid: c622b1fd4950b435fb41bd76f51f9cb1, type: 3}
+  specialBubbleType: 0
+  bubbleSprite: {fileID: 21300000, guid: 187fff0f91bf14ae4aecbc63b47fbc6d, type: 3}
   isRandomBubble: 0
+  isSpecialBubble: 0

@@ -13,21 +13,20 @@ namespace BubbleFolder
 
         public void ExecuteSpecialEffect(Bubble triggerBubble)
         {
-            var allBubbles = FuncManager.TriggerEvent<List<Bubble>>(FuncEvent.AllBubbles);
+            var visibleBubbles = FuncManager.TriggerEvent<List<Bubble>>(FuncEvent.VisibleBubbles);
             _availableBubbles.Clear();
 
-            for (int i = 0; i < allBubbles.Count; i++)
+            for (int i = 0; i < visibleBubbles.Count; i++)
             {
-                if (!allBubbles[i].IsMarkedForPop)
+                if (!visibleBubbles[i].IsMarkedForPop)
                 {
-                    _availableBubbles.Add(allBubbles[i]);
+                    _availableBubbles.Add(visibleBubbles[i]);
                 }
             }
 
             if (_availableBubbles.Count == 0) return;
 
-            var randomBubble = allBubbles[Random.Range(0, _availableBubbles.Count)];
-            randomBubble.MarkForPop();
+            var randomBubble = visibleBubbles[Random.Range(0, _availableBubbles.Count)];
             if (randomBubble.TryGetComponent(out Bubble bubble))
             {
                 MoveToPopBubble(triggerBubble.transform, bubble).Forget();
@@ -37,7 +36,7 @@ namespace BubbleFolder
         private static async UniTask MoveToPopBubble(Transform triggerBubble, Bubble popBubble)
         {
             var popIndicatorBubble = PoolObjectManager.Get<Transform>(PoolObjectKey.PopIndicatorBubble, triggerBubble);
-            await popIndicatorBubble.DOMove(popBubble.transform.position, 1);
+            await popIndicatorBubble.DOMove(popBubble.transform.position, 5).SetSpeedBased(true);
 
             popIndicatorBubble.gameObject.SetActive(false);
 

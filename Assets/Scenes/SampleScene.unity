@@ -1347,9 +1347,6 @@ MonoBehaviour:
   bubbleLayer:
     serializedVersion: 2
     m_Bits: 64
-  popObjectKey: 0
-  moveSpeed: 5
-  moveThreshold: 0.1
 --- !u!1 &1814734875
 GameObject:
   m_ObjectHideFlags: 0

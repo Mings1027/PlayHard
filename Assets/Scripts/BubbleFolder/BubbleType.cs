@@ -1,7 +1,7 @@
 public enum BubbleType
 {
     Red,
-    Blue,
+    Cyan,
     Yellow,
 }
 

@@ -12,8 +12,7 @@ public enum ActionEvent
 
 public enum FuncEvent
 {
-    AllBubbles,
-    ExistingBubbleType,
+    VisibleBubbles,
 }
 
 public static class EventManager

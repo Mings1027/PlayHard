@@ -26,9 +26,9 @@ namespace BubbleFolder
             if (size <= 0) return;
             for (var i = 0; i < size; i++)
             {
-                if (_colliders[i].TryGetComponent(out Bubble bubble))
+                if (_colliders[i].TryGetComponent(out Bubble bubble) && !bubble.IsMarkedForPop &&
+                    bubble != triggerBubble && bubble.gameObject.activeSelf)
                 {
-                    bubble.MarkForPop();
                     bubblesToPop.Add(bubble);
                 }
             }
@@ -38,25 +38,25 @@ namespace BubbleFolder
 
         private async UniTask BombIndicatorAnimation(List<Bubble> bubblesToPop)
         {
-            var bubbles = new Transform[bubblesToPop.Count];
+            var indicatorBubbles = new Transform[bubblesToPop.Count];
             var animationTasks = new UniTask[bubblesToPop.Count];
 
             for (int i = 0; i < bubblesToPop.Count; i++)
             {
-                bubbles[i] =
+                indicatorBubbles[i] =
                     PoolObjectManager.Get<Transform>(PoolObjectKey.PopIndicatorBubble, bubblesToPop[i].transform);
-                var originalScale = bubbles[i].localScale;
-                animationTasks[i] = bubbles[i].DOScale(originalScale * 1.5f, 0.25f)
-                                              .SetEase(Ease.OutQuad)
-                                              .SetLoops(4, LoopType.Yoyo)
-                                              .ToUniTask();
+                var originalScale = indicatorBubbles[i].localScale;
+                animationTasks[i] = indicatorBubbles[i].DOScale(originalScale * 1.5f, 0.25f)
+                                                       .SetEase(Ease.OutQuad)
+                                                       .SetLoops(4, LoopType.Yoyo)
+                                                       .ToUniTask();
             }
 
             await UniTask.WhenAll(animationTasks);
 
-            for (int i = 0; i < bubbles.Length; i++)
+            for (int i = 0; i < indicatorBubbles.Length; i++)
             {
-                bubbles[i].gameObject.SetActive(false);
+                indicatorBubbles[i].gameObject.SetActive(false);
             }
 
             if (bubblesToPop.Count > 0)

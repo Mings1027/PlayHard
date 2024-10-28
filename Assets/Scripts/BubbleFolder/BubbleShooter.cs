@@ -20,6 +20,7 @@ public class BubbleShooter : MonoBehaviour
 
     [SerializeField] private int maxBounces = 3;
 
+    private float _safeAreaTopY;
     private LineRenderer _bubbleLine;
     private bool _isDragging;
     private Vector3 _shooterPosition;
@@ -33,10 +34,18 @@ public class BubbleShooter : MonoBehaviour
 
     public void Init()
     {
+        InitSafeArea();
         InitShooter();
         InitWall();
         CreateBubble().Forget();
         InitPreviewBubble();
+    }
+
+    private void InitSafeArea()
+    {
+        var safeArea = Screen.safeArea;
+        var topSafeAreaViewport = new Vector3(0.5f, safeArea.yMax / Screen.height, 0);
+        _safeAreaTopY = Camera.main.ViewportToWorldPoint(topSafeAreaViewport).y;
     }
 
     private void InitShooter()
@@ -136,6 +145,14 @@ public class BubbleShooter : MonoBehaviour
             if (wallHit.collider != null) distance = wallHit.distance;
             if (bubbleHit.collider != null && bubbleHit.distance < distance)
             {
+                if (bubbleHit.point.y > _safeAreaTopY)
+                {
+                    _hasSnapPosition = false;
+                    _bubbleLine.positionCount = 0;
+                    _previewBubble.SetActive(false);
+                    return;
+                }
+
                 _bubbleLinePoints.Add(bubbleHit.point);
                 CalculateSnapPosition(bubbleHit);
                 break;
@@ -151,13 +168,30 @@ public class BubbleShooter : MonoBehaviour
             }
             else
             {
-                _bubbleLinePoints.Add(currentPos + (Vector3)(currentDir * remainingLength));
+                var endPoint = currentPos + (Vector3)(currentDir * remainingLength);
+                if (endPoint.y > _safeAreaTopY)
+                {
+                    _hasSnapPosition = false;
+                    _bubbleLine.positionCount = 0;
+                    _previewBubble.SetActive(false);
+                    return;
+                }
+
+                _bubbleLinePoints.Add(endPoint);
                 break;
             }
         }
 
         if (_hasSnapPosition)
         {
+            if (_snapPosition.y > _safeAreaTopY)
+            {
+                _hasSnapPosition = false;
+                _bubbleLine.positionCount = 0;
+                _previewBubble.SetActive(false);
+                return;
+            }
+
             if (_isShooting)
             {
                 _previewBubble.SetActive(false);
@@ -202,6 +236,12 @@ public class BubbleShooter : MonoBehaviour
             _ => Vector3.zero
         };
 
+        if (previewSnapPosition.y > _safeAreaTopY)
+        {
+            _hasSnapPosition = false;
+            return;
+        }
+
         var bubbleHit = Physics2D.OverlapCircle(previewSnapPosition, bubbleSize * 0.4f, bubbleLayer);
         var wallHit = Physics2D.OverlapCircle(previewSnapPosition, bubbleSize * 0.4f, wallLayer);
 
@@ -244,8 +284,7 @@ public class BubbleShooter : MonoBehaviour
             }
         }
 
-        bubble.transform.position = _snapPosition;
-        bubble.GetComponent<Collider2D>().enabled = true;
+        bubble.SetPosition(_snapPosition);
         EventManager.TriggerEvent(ActionEvent.AddBubble, bubble);
         EventManager.TriggerEvent(ActionEvent.CheckAndPopMatches, bubble);
 
@@ -262,13 +301,11 @@ public class BubbleShooter : MonoBehaviour
         if (_readyBubble == null && _activeBubble == null)
         {
             // 대기 버블 생성
-            _readyBubble = bubbleCreator.CreateRandomBubble(shooterPivot.position, Quaternion.identity);
-            _readyBubble.transform.position = readyPivot.position;
+            _readyBubble = bubbleCreator.CreateRandomBubble(readyPivot.position, Quaternion.identity);
             _readyBubble.GetComponent<Collider2D>().enabled = false;
 
             // 활성 버블 생성
             _activeBubble = bubbleCreator.CreateRandomBubble(shooterPivot.position, Quaternion.identity);
-            _activeBubble.transform.position = shooterPivot.position;
             _activeBubble.GetComponent<Collider2D>().enabled = false;
 
             var bubbleColor = _activeBubble.GetColorForType();

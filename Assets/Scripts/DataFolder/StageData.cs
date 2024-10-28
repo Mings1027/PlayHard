@@ -14,8 +14,8 @@ namespace DataControl
         public BubbleDataAndPosition(BubbleData data, Vector2Int position)
         {
             bubbleData = data;
-            bubblePosition = position;
             specialBubbleData = null;
+            bubblePosition = position;
         }
 
         public BubbleDataAndPosition(BubbleData data, SpecialBubbleData specialData, Vector2Int position)
@@ -62,12 +62,11 @@ namespace DataControl
                 else
                 {
                     existingBubble.bubbleData = bubbleData;
-                    existingBubble.specialBubbleData = null; // Special 데이터 초기화
+                    existingBubble.specialBubbleData = null;
                 }
             }
             else
             {
-                // 새 위치에 버블 추가
                 if (bubbleData is SpecialBubbleData)
                 {
                     Debug.LogWarning("Cannot add SpecialBubbleData without a base BubbleData");

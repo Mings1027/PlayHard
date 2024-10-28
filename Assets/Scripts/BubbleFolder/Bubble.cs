@@ -1,5 +1,3 @@
-using System;
-using Cysharp.Threading.Tasks;
 using DataControl;
 using InterfaceFolder;
 using PoolControl;
@@ -12,14 +10,14 @@ public class Bubble : MonoBehaviour
     private SpriteRenderer _overlaySprite;
     public BubbleType Type { get; private set; }
     private ISpecialBubbleEffect _specialEffect;
+    private CircleCollider2D _circleCollider;
     private bool _isSpecialBubble;
     [field: SerializeField] public bool IsMarkedForPop { get; private set; }
-    private CircleCollider2D _circleCollider2D;
 
     private void Awake()
     {
-        _circleCollider2D = GetComponent<CircleCollider2D>();
         _bubbleSprite = GetComponent<SpriteRenderer>();
+        _circleCollider = GetComponent<CircleCollider2D>();
     }
 
     public void Initialize(BubbleData bubbleData, SpecialBubbleData specialData = null)
@@ -65,45 +63,37 @@ public class Bubble : MonoBehaviour
         Type switch
         {
             BubbleType.Red => Color.red,
-            BubbleType.Blue => Color.blue,
+            BubbleType.Cyan => Color.cyan,
             BubbleType.Yellow => Color.yellow,
             _ => Color.white
         };
 
-    public void MarkForPop() => IsMarkedForPop = true;
-
-    public async UniTask ExecuteSpecialEffect()
-    {
-        if (!_isSpecialBubble || _specialEffect == null) return;
-        GetComponent<CircleCollider2D>().enabled = false;
-        await UniTask.Yield(destroyCancellationToken);
-        _specialEffect.ExecuteSpecialEffect(this);
-    }
-
-    public async UniTask Pop()
+    public void Pop()
     {
         if (!gameObject.activeSelf) return;
+        if (IsMarkedForPop) return;
+        gameObject.SetActive(false);
+        IsMarkedForPop = true;
         if (_isSpecialBubble && _specialEffect != null)
         {
-            _circleCollider2D.enabled = false;
-            await ExecuteSpecialEffect();
+            _specialEffect.ExecuteSpecialEffect(this);
         }
 
-        gameObject.SetActive(false);
-
-        await PlayPopEffect();
+        PlayPopEffect();
     }
 
-    private async UniTask PlayPopEffect()
+    public void SetPosition(Vector3 snapPosition)
     {
-        // 팝 파티클 생성 및 설정
+        transform.position = snapPosition;
+        _circleCollider.enabled = true;
+    }
+
+    private void PlayPopEffect()
+    {
         var popParticle = PoolObjectManager
             .Get<ParticleSystem>(PoolObjectKey.PopBubbleEffect, transform, transform.localScale);
 
         var mainModule = popParticle.main;
         mainModule.startColor = new ParticleSystem.MinMaxGradient(GetColorForType());
-
-        // 파티클 재생 완료 대기 (선택적)
-        await UniTask.WaitUntil(() => !popParticle.isPlaying);
     }
 }
