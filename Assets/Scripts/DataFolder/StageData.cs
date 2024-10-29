@@ -27,15 +27,20 @@ namespace DataControl
     }
 
     [Serializable]
-    [CreateAssetMenu(fileName = "New Stage", menuName = "Bubble Game/Stage Data", order = 1)]
     public class StageData : ScriptableObject
     {
+        [SerializeField] private bool bossStage;
+        public bool BossStage => bossStage;
+        
         public int Width { get; private set; } = 11;
-        public int height = 10;
+        [SerializeField] private int height = 10;
+        public int Height => height;
 
         [SerializeField] private List<BubbleDataAndPosition> bubbleDataPositions = new();
         public List<BubbleDataAndPosition> BubbleDataPositions => bubbleDataPositions;
-        public int bubbleAmmo;
+        
+        [SerializeField] private int bubbleAmmo;
+        public int BubbleAmmo => bubbleAmmo;
 
 #if UNITY_EDITOR
 

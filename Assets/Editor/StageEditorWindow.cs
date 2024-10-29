@@ -205,17 +205,27 @@ public class StageEditorWindow : EditorWindow
     private void DrawStageSettings()
     {
         EditorGUI.BeginChangeCheck();
+        var serializedObject = new SerializedObject(_currentStage);
+
+        var bossStageProperty = serializedObject.FindProperty("bossStage");
+        bossStageProperty.boolValue = EditorGUILayout.Toggle("Boss Stage", bossStageProperty.boolValue);
 
         var maxBubbleHeight = _currentStage.BubbleDataPositions.Count > 0
             ? _currentStage.BubbleDataPositions.Max(b => b.bubblePosition.y) + 1
             : 1;
-        if (_currentStage.height < maxBubbleHeight)
+
+        var heightProperty = serializedObject.FindProperty("height");
+        heightProperty.intValue = EditorGUILayout.IntSlider("Height", heightProperty.intValue, 1, 100);
+
+        if (heightProperty.intValue < maxBubbleHeight)
         {
-            _currentStage.height = maxBubbleHeight;
+            heightProperty.intValue = maxBubbleHeight;
         }
 
-        _currentStage.height = EditorGUILayout.IntSlider("Height", _currentStage.height, 1, 100);
-        _currentStage.bubbleAmmo = EditorGUILayout.IntSlider("Total Bubbles", _currentStage.bubbleAmmo, 1, 30);
+        var bubbleAmmoProperty = serializedObject.FindProperty("bubbleAmmo");
+        bubbleAmmoProperty.intValue = EditorGUILayout.IntSlider("Bubble Ammo", bubbleAmmoProperty.intValue, 1, 100);
+
+        serializedObject.ApplyModifiedProperties();
 
         if (EditorGUI.EndChangeCheck())
         {
@@ -232,14 +242,17 @@ public class StageEditorWindow : EditorWindow
         if (_selectedBubbleData != null)
         {
             string bubbleInfo;
-            if (_selectedBubbleData.IsRandomBubble)
+            if (_selectedBubbleData.IsBossBubble)
+            {
+                bubbleInfo = "Boss Bubble";
+            }
+            else if (_selectedBubbleData.IsRandomBubble)
             {
                 bubbleInfo = "Random";
             }
             else if (_selectedBubbleData.IsSpecialBubble)
             {
-                bubbleInfo =
-                    $"{_selectedBubbleData.SpecialBubbleType}";
+                bubbleInfo = $"{_selectedBubbleData.SpecialBubbleType}";
             }
             else
             {
@@ -268,27 +281,33 @@ public class StageEditorWindow : EditorWindow
         for (var i = 0; i < _availableBubbles.Count; i++)
         {
             var bubbleData = _availableBubbles[i];
-            if (bubbleData != null && !bubbleData.IsRandomBubble)
+            if (bubbleData != null)
             {
-                if (GUILayout.Button("", GUILayout.Width(40), GUILayout.Height(40)))
-                {
-                    _selectedBubbleData = bubbleData;
-                }
+                if (bubbleData.IsBossBubble && !_currentStage.BossStage)
+                    continue;
 
-                var rect = GUILayoutUtility.GetLastRect();
-                EditorGUI.DrawRect(rect, new Color(0.3f, 0.3f, 0.3f));
-
-                if (bubbleData.BubbleSprite != null)
+                if (!bubbleData.IsRandomBubble)
                 {
-                    GUI.DrawTexture(rect, bubbleData.BubbleSprite.texture, ScaleMode.ScaleToFit);
-                }
+                    if (GUILayout.Button("", GUILayout.Width(40), GUILayout.Height(40)))
+                    {
+                        _selectedBubbleData = bubbleData;
+                    }
 
-                if (_selectedBubbleData == bubbleData)
-                {
-                    EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y - 2, rect.width + 4, 2), Color.white);
-                    EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y + rect.height, rect.width + 4, 2), Color.white);
-                    EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y - 2, 2, rect.height + 4), Color.white);
-                    EditorGUI.DrawRect(new Rect(rect.x + rect.width, rect.y - 2, 2, rect.height + 4), Color.white);
+                    var rect = GUILayoutUtility.GetLastRect();
+                    EditorGUI.DrawRect(rect, new Color(0.3f, 0.3f, 0.3f));
+
+                    if (bubbleData.BubbleSprite != null)
+                    {
+                        GUI.DrawTexture(rect, bubbleData.BubbleSprite.texture, ScaleMode.ScaleToFit);
+                    }
+
+                    if (_selectedBubbleData == bubbleData)
+                    {
+                        EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y - 2, rect.width + 4, 2), Color.white);
+                        EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y + rect.height, rect.width + 4, 2), Color.white);
+                        EditorGUI.DrawRect(new Rect(rect.x - 2, rect.y - 2, 2, rect.height + 4), Color.white);
+                        EditorGUI.DrawRect(new Rect(rect.x + rect.width, rect.y - 2, 2, rect.height + 4), Color.white);
+                    }
                 }
             }
         }
@@ -382,7 +401,7 @@ public class StageEditorWindow : EditorWindow
     private void DrawAllBubbles(float leftMargin)
     {
         var cellNumber = 1;
-        for (var y = 0; y < _currentStage.height; y++)
+        for (var y = 0; y < _currentStage.Height; y++)
         {
             var rowWidth = y % 2 == 0 ? _currentStage.Width : _currentStage.Width - 1;
             for (var x = 0; x < rowWidth; x++)
@@ -509,7 +528,7 @@ public class StageEditorWindow : EditorWindow
     private float GetTotalGridHeight()
     {
         var verticalStep = (BubbleSize + VerticalSpacing) * 0.866f;
-        return _currentStage.height * verticalStep + BubbleSize;
+        return _currentStage.Height * verticalStep + BubbleSize;
     }
 
     private Vector2 GetBubblePosition(Vector2Int gridPos)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DataControl;
+using EventControl;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -13,7 +14,7 @@ public class BubbleCreator : MonoBehaviour
     [SerializeField] private float specialBubbleProbability = 0.3f;
 
     private Dictionary<BubbleType, BubbleData> _bubbleDataDict;
-    public float BubbleSize { get; private set; }
+    public static float BubbleSize { get; private set; }
 
     private void Awake()
     {
@@ -34,29 +35,41 @@ public class BubbleCreator : MonoBehaviour
         previewBubblePrefab.transform.localScale = Vector3.one * BubbleSize;
     }
 
-    public Bubble CreateBubble(BubbleType bubbleType, Vector3 position, Quaternion rotation,
-                               SpecialBubbleData specialData = null)
+    private void OnEnable()
     {
-        var bubble = Instantiate(bubblePrefab, position, rotation).GetComponent<Bubble>();
+        BubbleEventManager.AddEvent<BubbleType, Vector3, SpecialBubbleData, Bubble>(BubbleEvent.CreateBubble, CreateBubble);
+        BubbleEventManager.AddEvent<Vector3, Bubble>(BubbleEvent.RandomShooterBubble, RandomShooterBubble);
+        BubbleEventManager.AddEvent<Vector3, Bubble>(BubbleEvent.RandomStageBubble, RandomStageBubble);
+        BubbleEventManager.AddEvent(BubbleEvent.CreatePreviewBubble, CreatePreviewBubble);
+    }
+
+    private void OnDisable()
+    {
+        BubbleEventManager.RemoveEvent<BubbleType, Vector3, SpecialBubbleData, Bubble>(BubbleEvent.CreateBubble, CreateBubble);
+        BubbleEventManager.RemoveEvent<Vector3, Bubble>(BubbleEvent.RandomShooterBubble, RandomShooterBubble);
+        BubbleEventManager.RemoveEvent<Vector3, Bubble>(BubbleEvent.RandomStageBubble, RandomStageBubble);
+        BubbleEventManager.RemoveEvent(BubbleEvent.CreatePreviewBubble, CreatePreviewBubble);
+    }
+
+    private Bubble CreateBubble(BubbleType bubbleType, Vector3 position,
+                                SpecialBubbleData specialData = null)
+    {
+        var bubble = Instantiate(bubblePrefab, position, Quaternion.identity).GetComponent<Bubble>();
         if (_bubbleDataDict.TryGetValue(bubbleType, out var bubbleData))
         {
             bubble.Initialize(bubbleData, specialData);
-        }
-        else
-        {
-            Debug.LogError($"BubbleData not found for type {bubbleType}");
         }
 
         return bubble;
     }
 
-    public Bubble CreateRandomBubble(Vector3 position, Quaternion rotation)
+    private Bubble RandomShooterBubble(Vector3 position)
     {
         var randomType = (BubbleType)Random.Range(0, Enum.GetValues(typeof(BubbleType)).Length);
-        return CreateBubble(randomType, position, rotation);
+        return CreateBubble(randomType, position);
     }
 
-    public Bubble CreateRandomBubbleWithChanceOfSpecial(Vector3 position, Quaternion rotation)
+    private Bubble RandomStageBubble(Vector3 position)
     {
         var canCreateSpecialBubble = Random.value < specialBubbleProbability;
         var randomType = (BubbleType)Random.Range(0, Enum.GetValues(typeof(BubbleType)).Length);
@@ -68,19 +81,11 @@ public class BubbleCreator : MonoBehaviour
                 [Random.Range(0, bubbleGlobalSettingSO.SpecialBubbleData.Length)];
         }
 
-        return CreateBubble(randomType, position, rotation, specialData);
+        return CreateBubble(randomType, position, specialData);
     }
 
-    public GameObject CreatePreviewBubble()
+    private GameObject CreatePreviewBubble()
     {
         return Instantiate(previewBubblePrefab);
-    }
-    
-    public void DisableBubbleCollider(Bubble bubble)
-    {
-        if (bubble.TryGetComponent(out CircleCollider2D circleCollider2D))
-        {
-            circleCollider2D.enabled = false;
-        }
     }
 }

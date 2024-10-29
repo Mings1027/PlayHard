@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using EventControl;
 using InterfaceFolder;
 using PoolControl;
 using UnityEngine;
@@ -29,6 +30,7 @@ namespace BubbleFolder
             var randomBubble = visibleBubbles[Random.Range(0, _availableBubbles.Count)];
             if (randomBubble.TryGetComponent(out Bubble bubble))
             {
+                bubble.DisableCollider();
                 MoveToPopBubble(triggerBubble.transform, bubble).Forget();
             }
         }
@@ -40,7 +42,7 @@ namespace BubbleFolder
 
             popIndicatorBubble.gameObject.SetActive(false);
 
-            EventManager.TriggerEvent(ActionEvent.PopBubble, popBubble);
+            BubbleEventManager.TriggerEvent(BubbleEvent.PopBubble, popBubble);
         }
     }
 }

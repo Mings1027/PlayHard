@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6fae816ee0ce489fa9694a0e749653f, type: 3}
   m_Name: Level_1
   m_EditorClassIdentifier: 
+  bossStage: 0
   height: 7
   bubbleDataPositions:
   - bubbleData: {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
@@ -128,4 +129,4 @@ MonoBehaviour:
   - bubbleData: {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
     specialBubbleData: {fileID: 0}
     bubblePosition: {x: 6, y: 6}
-  bubbleAmmo: 30
+  bubbleAmmo: 22

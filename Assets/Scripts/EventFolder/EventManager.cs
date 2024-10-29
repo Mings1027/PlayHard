@@ -4,10 +4,11 @@ using Cysharp.Threading.Tasks;
 
 public enum ActionEvent
 {
-    //In Game
-    AddBubble,
-    CheckMatchingBubble,
-    PopBubble,
+    DisplayTouchBlockPanel,
+    DisplayGameOverPanel,
+    SetRemainingCountText,
+    DisplayInGamePanel,
+    
 }
 
 public enum FuncEvent

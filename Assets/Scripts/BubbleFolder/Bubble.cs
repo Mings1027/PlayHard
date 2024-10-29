@@ -83,11 +83,20 @@ public class Bubble : MonoBehaviour
         PlayPopEffect();
     }
 
+    public void PopDestroy()
+    {
+        if (!gameObject.activeSelf) return;
+        gameObject.SetActive(false);
+        PlayPopEffect();
+
+    }
     public void SetPosition(Vector3 snapPosition)
     {
         transform.position = snapPosition;
         _circleCollider.enabled = true;
     }
+
+    public void DisableCollider() => _circleCollider.enabled = false;
 
     private void PlayPopEffect()
     {

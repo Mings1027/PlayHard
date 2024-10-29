@@ -10,11 +10,13 @@ namespace DataControl
         [SerializeField] private Sprite bubbleSprite;
         [SerializeField] private bool isRandomBubble;
         [SerializeField] protected bool isSpecialBubble;
+        [SerializeField] private bool isBossBubble;
 
         public BubbleType BubbleType => bubbleType;
         public SpecialBubbleType SpecialBubbleType => specialBubbleType;
         public Sprite BubbleSprite => bubbleSprite;
         public bool IsRandomBubble => isRandomBubble;
         public bool IsSpecialBubble => isSpecialBubble;
+        public bool IsBossBubble => isBossBubble;
     }
 }

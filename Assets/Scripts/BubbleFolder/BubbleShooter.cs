@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using EventControl;
 using UnityEngine;
 
 public class BubbleShooter : MonoBehaviour
@@ -14,7 +15,6 @@ public class BubbleShooter : MonoBehaviour
     [SerializeField] private LayerMask wallLayer;
     [SerializeField] private LayerMask bubbleLayer;
 
-    [SerializeField] private BubbleCreator bubbleCreator;
     [SerializeField] private Transform shooterPivot;
     [SerializeField] private Transform readyPivot;
 
@@ -31,15 +31,18 @@ public class BubbleShooter : MonoBehaviour
     private Vector3 _snapPosition;
     private bool _hasSnapPosition;
     private bool _isShooting;
+    private int _remainingBubbles;
 
     public void Init()
     {
         InitSafeArea();
         InitShooter();
         InitWall();
-        CreateBubble().Forget();
         InitPreviewBubble();
+        InitShooterBubble().Forget();
     }
+
+    public void SetBubbleCount(int remainingBubbles) => _remainingBubbles = remainingBubbles;
 
     private void InitSafeArea()
     {
@@ -53,13 +56,14 @@ public class BubbleShooter : MonoBehaviour
         _bubbleLine = GetComponent<LineRenderer>();
         _bubbleLine.startWidth = 0.1f;
         _bubbleLine.endWidth = 0.1f;
-        _bubbleLine.material = new Material(Shader.Find("Sprites/Default"));
 
         _bubbleLinePoints = new List<Vector3>();
 
         var shooterY = Camera.main.ViewportToWorldPoint(new Vector3(0, 0.25f, 0)).y;
         _shooterPosition = new Vector3(0, shooterY, 0);
         transform.position = _shooterPosition;
+
+        EventManager.TriggerEvent(ActionEvent.DisplayInGamePanel, transform.position);
     }
 
     private void InitWall()
@@ -77,22 +81,35 @@ public class BubbleShooter : MonoBehaviour
 
     private void InitPreviewBubble()
     {
-        _previewBubble = bubbleCreator.CreatePreviewBubble();
+        _previewBubble = BubbleEventManager.TriggerEvent<GameObject>(BubbleEvent.CreatePreviewBubble);
         _previewBubble.SetActive(false);
+    }
+
+    private async UniTask InitShooterBubble()
+    {
+        // 초기 상태: 두 버블 모두 없을 때
+        if (_readyBubble == null && _activeBubble == null)
+        {
+            _readyBubble = CreateShooterBubble(readyPivot.position);
+            await MoveReadyToActive();
+            _readyBubble = CreateShooterBubble(readyPivot.position);
+            UpdateBubbleLineColor(_activeBubble);
+        }
     }
 
     private void Update()
     {
-        if (_isShooting) return;
-
         if (Input.GetMouseButtonDown(0))
         {
             _isDragging = true;
-            UpdateShootingLine();
+            if (!_isShooting)
+            {
+                UpdateShootingLine();
+            }
         }
         else if (Input.GetMouseButtonUp(0))
         {
-            if (_isDragging && _hasSnapPosition)
+            if (_isDragging && _hasSnapPosition && !_isShooting)
             {
                 FireBubble().Forget();
             }
@@ -102,7 +119,7 @@ public class BubbleShooter : MonoBehaviour
             if (_previewBubble.activeSelf) _previewBubble.SetActive(false);
         }
 
-        if (_isDragging)
+        if (_isDragging && !_isShooting)
         {
             UpdateShootingLine();
         }
@@ -158,7 +175,7 @@ public class BubbleShooter : MonoBehaviour
                 break;
             }
 
-            Debug.DrawRay(currentPos, currentDir * maxLineLength, Color.yellow);
+            // Debug.DrawRay(currentPos, currentDir * maxLineLength, Color.yellow);
 
             if (wallHit.collider != null)
             {
@@ -216,7 +233,7 @@ public class BubbleShooter : MonoBehaviour
     {
         var hitBubble = hit.collider.gameObject;
         var bubblePos = hitBubble.transform.position;
-        var bubbleSize = bubbleCreator.BubbleSize;
+        var bubbleSize = BubbleCreator.BubbleSize;
         var verticalSpacing = bubbleSize * 0.866f;
 
         var hitDirection = (hit.point - (Vector2)bubblePos).normalized;
@@ -258,14 +275,11 @@ public class BubbleShooter : MonoBehaviour
 
     private async UniTask FireBubble()
     {
-        if (!_hasSnapPosition || _isShooting) return;
-
         _isShooting = true;
-        var bubble = _activeBubble;
-        _activeBubble = null;
-        bubble.transform.SetParent(null);
+        _remainingBubbles--;
+        EventManager.TriggerEvent(ActionEvent.SetRemainingCountText, _remainingBubbles);
 
-        var createBubbleTask = CreateBubble();
+        var bubble = _activeBubble;
 
         for (var i = 0; i < _bubbleLinePoints.Count - 1; i++)
         {
@@ -285,43 +299,76 @@ public class BubbleShooter : MonoBehaviour
         }
 
         bubble.SetPosition(_snapPosition);
-        EventManager.TriggerEvent(ActionEvent.AddBubble, bubble);
-        EventManager.TriggerEvent(ActionEvent.CheckMatchingBubble, bubble);
 
-        _isShooting = false;
+        if (_remainingBubbles <= 0)
+        {
+            if (_readyBubble != null)
+            {
+                _readyBubble.PopDestroy();
+                Destroy(_readyBubble.gameObject);
+            }
+
+            if (_activeBubble != null)
+            {
+                _activeBubble.PopDestroy();
+                Destroy(_activeBubble.gameObject);
+            }
+
+            _hasSnapPosition = false;
+            _isShooting = false;
+            UniTaskEventManager.TriggerAsync(UniTaskEvent.EndStage).Forget();
+            return;
+        }
+
+        var createBubbleTask = CreateBubble();
+
+        BubbleEventManager.TriggerEvent(BubbleEvent.AddBubble, bubble);
+        BubbleEventManager.TriggerEvent(BubbleEvent.CheckMatchingBubble, bubble);
 
         await UniTaskEventManager.TriggerAsync(UniTaskEvent.ElevateBubbleContainer);
 
-        await createBubbleTask;
+        _isShooting = false;
+
+        if (_remainingBubbles > 0)
+        {
+            await createBubbleTask;
+        }
     }
 
     private async UniTask CreateBubble()
     {
-        if (_readyBubble == null && _activeBubble == null)
+        // 발사 후 상태
+        await MoveReadyToActive();
+        if (_remainingBubbles > 0)
         {
-            // 대기 버블 생성
-            _readyBubble = bubbleCreator.CreateRandomBubble(readyPivot.position, Quaternion.identity);
-            bubbleCreator.DisableBubbleCollider(_readyBubble);
-
-            // 활성 버블 생성
-            _activeBubble = bubbleCreator.CreateRandomBubble(shooterPivot.position, Quaternion.identity);
-            bubbleCreator.DisableBubbleCollider(_activeBubble);
-        }
-        // 활성 버블이 발사되어 없어진 경우
-        else if (_activeBubble == null)
-        {
-            // 대기 버블을 활성 버블로 이동
-            _activeBubble = _readyBubble;
-            await MoveBubbleWithLerp(_activeBubble.transform, shooterPivot.position, 0.3f);
-
-            // 새로운 대기 버블 생성
-            _readyBubble = bubbleCreator.CreateRandomBubble(readyPivot.position, Quaternion.identity);
-            bubbleCreator.DisableBubbleCollider(_readyBubble);
+            _readyBubble = CreateShooterBubble(readyPivot.position);
         }
 
         UpdateBubbleLineColor(_activeBubble);
     }
 
+    private async UniTask MoveReadyToActive()
+    {
+        _activeBubble = _readyBubble;
+        await MoveBubbleWithLerp(_activeBubble.transform, shooterPivot.position, 0.3f);
+        _readyBubble = null;
+    }
+
+    private Bubble CreateShooterBubble(Vector3 position)
+    {
+        var bubble = BubbleEventManager.TriggerEvent<Vector3, Bubble>(BubbleEvent.RandomShooterBubble, position);
+
+        DisableBubbleCollider(bubble);
+        return bubble;
+    }
+
+    private static void DisableBubbleCollider(Bubble bubble)
+    {
+        if (bubble.TryGetComponent(out CircleCollider2D circleCollider2D))
+        {
+            circleCollider2D.enabled = false;
+        }
+    }
 
     private void UpdateBubbleLineColor(Bubble bubble)
     {

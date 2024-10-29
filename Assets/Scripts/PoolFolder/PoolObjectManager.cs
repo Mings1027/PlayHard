@@ -52,9 +52,7 @@ namespace PoolControl
         [ContextMenu("Sort Pool")]
         private void SortPool()
         {
-            // Array.Sort(pools);
-            // Array.Sort(uiPools);
-            // Array.Sort(monsterPools);
+            Array.Sort(pools);
         }
 
         [ContextMenu("Set Prefab key from Pool")]
@@ -72,7 +70,10 @@ namespace PoolControl
             {
                 var t = pools[i];
                 _prefabTable.Add(t.poolObjectKey, t.prefab);
-                t.prefab.GetComponent<PoolObject>().poolObjKey = t.poolObjectKey;
+                if (t.prefab.TryGetComponent(out PoolObject poolObject))
+                {
+                    poolObject.poolObjKey = t.poolObjectKey;
+                }
 
                 if (t.prefab == null) throw new Exception($"{t.poolObjectKey} doesn't exist");
                 _poolStackTable.Add(t.poolObjectKey, new Stack<GameObject>());

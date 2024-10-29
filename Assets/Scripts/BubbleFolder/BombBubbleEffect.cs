@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using EventControl;
 using InterfaceFolder;
 using PoolControl;
 using UnityEngine;
@@ -29,6 +30,7 @@ namespace BubbleFolder
                 if (_colliders[i].TryGetComponent(out Bubble bubble) && !bubble.IsMarkedForPop &&
                     bubble != triggerBubble && bubble.gameObject.activeSelf)
                 {
+                    bubble.DisableCollider();
                     bubblesToPop.Add(bubble);
                 }
             }
@@ -61,7 +63,7 @@ namespace BubbleFolder
 
             if (bubblesToPop.Count > 0)
             {
-                UniTaskEventManager.TriggerAsync(UniTaskEvent.PopMatchingBubbles, bubblesToPop).Forget();
+                BubbleEventManager.TriggerAsync(BubbleEvent.PopMatchingBubbles, bubblesToPop).Forget();
             }
         }
     }

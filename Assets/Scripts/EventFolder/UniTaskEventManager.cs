@@ -9,7 +9,7 @@ public enum UniTaskEvent
     // Stage 관련
     CreateStage,
     ElevateBubbleContainer,
-    PopMatchingBubbles,
+    EndStage,
 }
 
 public static class UniTaskEventManager
