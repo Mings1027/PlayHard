@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using DataControl;
+using HelperFolder;
 using UnityEditor;
 using UnityEngine;
 
@@ -126,7 +127,7 @@ public class StageEditorWindow : EditorWindow
         var buttonStyle = new GUIStyle(EditorStyles.miniButton)
         {
             fixedWidth = 100,
-            fixedHeight = 30,
+            fixedHeight = 20,
             fontSize = 16,
             fontStyle = FontStyle.Bold
         };
@@ -527,24 +528,29 @@ public class StageEditorWindow : EditorWindow
 
     private float GetTotalGridHeight()
     {
-        var verticalStep = (BubbleSize + VerticalSpacing) * 0.866f;
+        var verticalStep = (BubbleSize + VerticalSpacing) *
+                           Mathf.Sin(BubbleMatchHelper.HexagonAngle);
         return _currentStage.Height * verticalStep + BubbleSize;
     }
 
     private Vector2 GetBubblePosition(Vector2Int gridPos)
     {
         var horizontalStep = BubbleSize + HorizontalSpacing;
-        var verticalStep = (BubbleSize + VerticalSpacing) * 0.866f;
+        var verticalStep = (BubbleSize + VerticalSpacing) *
+                           Mathf.Sin(BubbleMatchHelper.HexagonAngle);
 
         var xPos = gridPos.x * horizontalStep;
         var yPos = gridPos.y * verticalStep;
 
         if (gridPos.y % 2 != 0)
         {
-            xPos += horizontalStep * 0.5f;
+            xPos += horizontalStep * Mathf.Cos(BubbleMatchHelper.HexagonAngle);
         }
 
-        return new Vector2(xPos + BubbleSize * 0.5f, yPos + BubbleSize * 0.5f);
+        return new Vector2(
+            xPos + BubbleSize * Mathf.Cos(BubbleMatchHelper.HexagonAngle),
+            yPos + BubbleSize * Mathf.Cos(BubbleMatchHelper.HexagonAngle)
+        );
     }
 
     private void DrawCellNumber(Vector2 position, int number)

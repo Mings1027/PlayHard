@@ -37,7 +37,8 @@ public class BubbleCreator : MonoBehaviour
 
     private void OnEnable()
     {
-        BubbleEventManager.AddEvent<BubbleType, Vector3, SpecialBubbleData, Bubble>(BubbleEvent.CreateBubble, CreateBubble);
+        BubbleEventManager.AddEvent<BubbleType, Vector3, SpecialBubbleData, Bubble>(BubbleEvent.CreateBubble,
+            CreateBubble);
         BubbleEventManager.AddEvent<Vector3, Bubble>(BubbleEvent.RandomShooterBubble, RandomShooterBubble);
         BubbleEventManager.AddEvent<Vector3, Bubble>(BubbleEvent.RandomStageBubble, RandomStageBubble);
         BubbleEventManager.AddEvent(BubbleEvent.CreatePreviewBubble, CreatePreviewBubble);
@@ -45,14 +46,14 @@ public class BubbleCreator : MonoBehaviour
 
     private void OnDisable()
     {
-        BubbleEventManager.RemoveEvent<BubbleType, Vector3, SpecialBubbleData, Bubble>(BubbleEvent.CreateBubble, CreateBubble);
+        BubbleEventManager.RemoveEvent<BubbleType, Vector3, SpecialBubbleData, Bubble>(BubbleEvent.CreateBubble,
+            CreateBubble);
         BubbleEventManager.RemoveEvent<Vector3, Bubble>(BubbleEvent.RandomShooterBubble, RandomShooterBubble);
         BubbleEventManager.RemoveEvent<Vector3, Bubble>(BubbleEvent.RandomStageBubble, RandomStageBubble);
         BubbleEventManager.RemoveEvent(BubbleEvent.CreatePreviewBubble, CreatePreviewBubble);
     }
 
-    private Bubble CreateBubble(BubbleType bubbleType, Vector3 position,
-                                SpecialBubbleData specialData = null)
+    private Bubble CreateBubble(BubbleType bubbleType, Vector3 position, SpecialBubbleData specialData = null)
     {
         var bubble = Instantiate(bubblePrefab, position, Quaternion.identity).GetComponent<Bubble>();
         if (_bubbleDataDict.TryGetValue(bubbleType, out var bubbleData))

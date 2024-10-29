@@ -60,7 +60,7 @@ public class StageManager : MonoBehaviour
         UniTaskEventManager.RemoveEvent<StageData>(UniTaskEvent.CreateStage, CreateStage);
         UniTaskEventManager.RemoveEvent(UniTaskEvent.ElevateBubbleContainer, ElevateBubbleContainer);
         UniTaskEventManager.RemoveEvent(UniTaskEvent.EndStage, EndStage);
-        
+
         BubbleEventManager.RemoveAsyncEvent<List<Bubble>>(BubbleEvent.PopMatchingBubbles, PopMatchingBubbles);
 
         BubbleEventManager.RemoveEvent<Bubble>(BubbleEvent.CheckMatchingBubble, CheckMatchingBubble);
@@ -122,7 +122,7 @@ public class StageManager : MonoBehaviour
     private Vector3 CalculateBubblePosition(Vector2Int point)
     {
         var bubbleSize = BubbleCreator.BubbleSize;
-        var verticalSpacing = bubbleSize * 0.866f;
+        var verticalSpacing = bubbleSize * Mathf.Sin(BubbleMatchHelper.HexagonAngle);
 
         // 가장 낮은 y를 찾음
         float lowestY = 0;
@@ -137,7 +137,9 @@ public class StageManager : MonoBehaviour
         containerTopPosition.y = lowestY * verticalSpacing;
 
         var bubblePosition = containerTopPosition;
-        var xOffset = point.y % 2 == 1 ? bubbleSize * 0.5f : 0f;
+        var xOffset = point.y % 2 == 1
+            ? bubbleSize * Mathf.Cos(BubbleMatchHelper.HexagonAngle)
+            : 0;
         bubblePosition.x += (point.x - (_currentStage.Width - 1) / 2f) * bubbleSize + xOffset;
         // y position 계산을 뒤집어서 아래에서부터 위로 생성되도록 함
         bubblePosition.y -= point.y * verticalSpacing;

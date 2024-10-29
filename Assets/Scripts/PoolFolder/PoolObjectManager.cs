@@ -52,7 +52,7 @@ namespace PoolControl
         [ContextMenu("Sort Pool")]
         private void SortPool()
         {
-            Array.Sort(pools);
+            // Array.Sort(pools);
         }
 
         [ContextMenu("Set Prefab key from Pool")]

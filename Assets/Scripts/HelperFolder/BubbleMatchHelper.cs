@@ -8,6 +8,7 @@ namespace HelperFolder
         private readonly LayerMask _bubbleLayer;
         private readonly float _safeAreaTopY;
         private const int MinMatchCount = 3;
+        public static float HexagonAngle => Mathf.PI / 3f;
 
         public BubbleMatchHelper(LayerMask bubbleLayer, float safeAreaTopY)
         {
@@ -52,20 +53,12 @@ namespace HelperFolder
         {
             var neighbors = new List<Bubble>();
             var bubbleSize = bubble.transform.localScale.x;
-            var verticalSpacing = bubbleSize * 0.866f;
 
-            var directions = new Vector2[]
+            // 0도부터 60도씩 더해지면서 계산
+            for (int i = 0; i < 6; i++)
             {
-                new(bubbleSize, 0),
-                new(bubbleSize * 0.5f, verticalSpacing),
-                new(-bubbleSize * 0.5f, verticalSpacing),
-                new(-bubbleSize, 0),
-                new(-bubbleSize * 0.5f, -verticalSpacing),
-                new(bubbleSize * 0.5f, -verticalSpacing)
-            };
-
-            foreach (var direction in directions)
-            {
+                var angle = i * HexagonAngle;
+                var direction = new Vector2(bubbleSize * Mathf.Cos(angle), bubbleSize * Mathf.Sin(angle));
                 var checkPosition = (Vector2)bubble.transform.position + direction;
                 var hit = Physics2D.OverlapCircle(checkPosition, bubbleSize * 0.4f, _bubbleLayer);
                 if (hit != null && hit.TryGetComponent(out Bubble hitBubble))
