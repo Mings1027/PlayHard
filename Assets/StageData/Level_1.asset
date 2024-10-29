@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6fae816ee0ce489fa9694a0e749653f, type: 3}
   m_Name: Level_1
   m_EditorClassIdentifier: 
-  bossStage: 0
+  bossStage: 1
   height: 7
   bubbleDataPositions:
-  - bubbleData: {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
+  - bubbleData: {fileID: 11400000, guid: 0d5cef071e78f4772ab72844083bdbb7, type: 2}
     specialBubbleData: {fileID: 0}
     bubblePosition: {x: 4, y: 0}
   - bubbleData: {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
@@ -72,7 +72,7 @@ MonoBehaviour:
   - bubbleData: {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
     specialBubbleData: {fileID: 0}
     bubblePosition: {x: 4, y: 6}
-  - bubbleData: {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}
+  - bubbleData: {fileID: 11400000, guid: 0d5cef071e78f4772ab72844083bdbb7, type: 2}
     specialBubbleData: {fileID: 0}
     bubblePosition: {x: 6, y: 0}
   - bubbleData: {fileID: 11400000, guid: b9a51e295bda6431c8b98787b30e137a, type: 2}

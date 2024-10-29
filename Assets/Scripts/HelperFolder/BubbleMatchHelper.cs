@@ -8,44 +8,47 @@ namespace HelperFolder
         private readonly LayerMask _bubbleLayer;
         private readonly float _safeAreaTopY;
         private const int MinMatchCount = 3;
+        private readonly HashSet<Bubble> _visited;
+        private readonly List<Bubble> _matchingBubbles;
+
         public static float HexagonAngle => Mathf.PI / 3f;
 
         public BubbleMatchHelper(LayerMask bubbleLayer, float safeAreaTopY)
         {
             _bubbleLayer = bubbleLayer;
             _safeAreaTopY = safeAreaTopY;
+            _visited = new HashSet<Bubble>();
+            _matchingBubbles = new List<Bubble>();
         }
 
         public List<Bubble> FindMatchingBubbles(Bubble currentBubble)
         {
-            var visited = new HashSet<Bubble>();
-            var matchingBubbles = new List<Bubble>();
+            _visited.Clear();
+            _matchingBubbles.Clear();
             var bubbleType = currentBubble.Type;
 
-            FloodFill(currentBubble, bubbleType, visited, matchingBubbles);
+            FloodFill(currentBubble, bubbleType);
 
-            if (matchingBubbles.Count < MinMatchCount)
+            if (_matchingBubbles.Count < MinMatchCount)
             {
-                matchingBubbles.Clear();
+                _matchingBubbles.Clear();
             }
 
-            return matchingBubbles;
+            return _matchingBubbles;
         }
 
-        private void FloodFill(Bubble bubble, BubbleType targetType, HashSet<Bubble> visited,
-                               List<Bubble> matchingBubbles)
+        private void FloodFill(Bubble bubble, BubbleType targetType)
         {
-            if (bubble == null || visited.Contains(bubble) ||
-                bubble.Type != targetType || bubble.transform.position.y > _safeAreaTopY)
+            if (_visited.Contains(bubble) || bubble.Type != targetType || bubble.transform.position.y > _safeAreaTopY)
                 return;
 
-            visited.Add(bubble);
-            matchingBubbles.Add(bubble);
+            _visited.Add(bubble);
+            _matchingBubbles.Add(bubble);
 
             var neighbors = GetNeighborBubbles(bubble);
-            foreach (var neighbor in neighbors)
+            for (var i = 0; i < neighbors.Count; i++)
             {
-                FloodFill(neighbor, targetType, visited, matchingBubbles);
+                FloodFill(neighbors[i], targetType);
             }
         }
 
@@ -55,6 +58,12 @@ namespace HelperFolder
             var bubbleSize = bubble.transform.localScale.x;
 
             // 0도부터 60도씩 더해지면서 계산
+            // angle = 0, cos(0) = 1, sin(0) = 0
+            // angle = 60, cos(60) = 0.5, sin(60) = 0.866
+            // angle = 120, cos(120) = -0.5, sin(120) = 0.866
+            // angle = 180, cos(180) = -1, sin(180) = 0
+            // angle = 240, cos(240) = -0.5, sin(240) = -0.866
+            // angle = 300, cos(300) = 0.5, sin(300) = -0.866
             for (int i = 0; i < 6; i++)
             {
                 var angle = i * HexagonAngle;

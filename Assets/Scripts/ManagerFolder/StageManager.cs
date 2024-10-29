@@ -149,6 +149,7 @@ public class StageManager : MonoBehaviour
 
     private void CheckMatchingBubble(Bubble currentBubble)
     {
+        if (currentBubble == null) return;
         var matchingBubbles = _bubbleMatchHelper.FindMatchingBubbles(currentBubble);
         if (matchingBubbles.Count > 0)
         {
